@@ -7,6 +7,8 @@ outliers:
   method: iqr           # iqr | zscore
   threshold: 1.5        # iqr: pengali IQR, zscore: batas z
   action: flag          # JANGAN langsung hapus; tandai untuk direview
+  min_rows: 4           # minimal baris terisi agar deteksi dijalankan
+  exclude_columns: []   # kolom yang dilewati, mis. [tahun, kode_wilayah]
 formats:
   strip_whitespace: true
   lowercase_columns: true
