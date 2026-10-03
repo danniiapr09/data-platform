@@ -1,0 +1,12 @@
+# Aturan cleaning default. Ubah di sini, tidak perlu ubah kode.
+missing_values:
+  strategy: flag        # flag | drop | fill_mean | fill_median | fill_zero
+duplicates:
+  action: drop          # drop | flag
+outliers:
+  method: iqr           # iqr | zscore
+  threshold: 1.5        # iqr: pengali IQR, zscore: batas z
+  action: flag          # JANGAN langsung hapus; tandai untuk direview
+formats:
+  strip_whitespace: true
+  lowercase_columns: true
