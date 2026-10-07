@@ -42,6 +42,8 @@ def run_cleaning(dataset_id: int, db: Session = Depends(get_db)):
     db.add(ProcessingLog(dataset_id=dataset_id, langkah="cleaning",
                          ringkasan=f"v{version}: {rp['baris_awal']}->{rp['baris_akhir']} baris, "
                                    f"{rp['anomali_total']} anomali, kelengkapan {rp['kelengkapan_persen']}%"))
+    db.add(ProcessingLog(dataset_id=dataset_id, langkah="cleaning_report",
+                         ringkasan=json.dumps(rp, default=str, ensure_ascii=False)))
     db.add(AuditLog(aksi=f"cleaning dataset {dataset_id} (v{version})"))
     db.commit()
     return {"dataset_id": dataset_id, "versi": version, "laporan": rp}
