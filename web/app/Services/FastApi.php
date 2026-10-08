@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
+
+class FastApi
+{
+    public const OFFLINE = 'Layanan data tidak bisa dihubungi. Pastikan Docker sudah menyala, lalu muat ulang halaman.';
+
+    public static function http(): PendingRequest
+    {
+        return Http::baseUrl(config('services.fastapi.url'))->acceptJson()->timeout(120);
+    }
+
+    public static function error(Response $res, string $default): string
+    {
+        $detail = $res->json('detail');
+        return is_string($detail) ? $detail : $default;
+    }
+
+    /** Data satu dataset (nama, status) dari daftar dataset. */
+    public static function dataset(int $id): array
+    {
+        $json = self::http()->get('/datasets')->json() ?? [];
+        if (! array_is_list($json)) {
+            $json = $json['datasets'] ?? $json['items'] ?? [];
+        }
+        return collect($json)->first(fn ($d) => ($d['id'] ?? $d['dataset_id'] ?? null) == $id) ?? [];
+    }
+}
