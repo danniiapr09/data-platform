@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from . import models  # noqa: F401  (daftarkan semua tabel)
 from .api.analysis import router as analysis_router
+from .api.anomalies import router as anomalies_router
 from .api.cleaning import router as cleaning_router
 from .api.compare import router as compare_router
 from .api.datasets import router as datasets_router
@@ -23,6 +24,7 @@ app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins],
 
 app.include_router(datasets_router)
 app.include_router(cleaning_router)
+app.include_router(anomalies_router)
 app.include_router(analysis_router)
 app.include_router(compare_router)
 app.include_router(forecast_router)
@@ -32,7 +34,7 @@ app.include_router(export_router)
 
 @app.on_event("startup")
 def create_tables():
-    # Sementara pakai create_all. Nanti ganti ke Alembic kalau skema sudah stabil.
+    # Sementara pakai create_all.
     Base.metadata.create_all(bind=engine)
 
 

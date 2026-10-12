@@ -6,7 +6,7 @@ from ..analysis import eda
 from ..db import get_db
 from .analysis import load_clean_df
 
-router = APIRouter(prefix="/datasets/{dataset_id}", tags=["perbandingan"])
+router = APIRouter(prefix="/datasets/{dataset_id}", tags=["compare"])
 
 
 def _prepare(db, dataset_id, waktu, periode=None, dari=None, sampai=None,
