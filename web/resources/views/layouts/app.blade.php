@@ -25,6 +25,12 @@
     </style>
 </head>
 <body class="bg-paper text-ink font-sans antialiased">
+@php
+    $nav = [
+        ['rute' => 'beranda', 'nama' => 'Beranda', 'aktif' => request()->routeIs('beranda'), 'ikon' => 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10'],
+        ['rute' => 'datasets.index', 'nama' => 'Dataset', 'aktif' => request()->is('datasets*'), 'ikon' => 'M4 6h16M4 12h16M4 18h10'],
+    ];
+@endphp
 <div class="lg:flex min-h-screen">
 
     {{-- Sidebar (desktop) --}}
@@ -44,21 +50,43 @@
         </div>
 
         <nav class="space-y-1 text-sm font-medium">
-            <a href="{{ route('datasets.index') }}"
-               class="flex items-center gap-3 rounded-lg px-3 py-2.5 bg-brand-800 text-white">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/>
-                </svg>
-                Dataset
-            </a>
+            @foreach ($nav as $n)
+                <a href="{{ route($n['rute']) }}" @if ($n['aktif']) aria-current="page" @endif
+                   class="flex items-center gap-3 rounded-lg px-3 py-2.5 {{ $n['aktif'] ? 'bg-brand-800 text-white' : 'hover:bg-brand-800/60' }}">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $n['ikon'] }}"/>
+                    </svg>
+                    {{ $n['nama'] }}
+                </a>
+            @endforeach
         </nav>
     </aside>
 
     {{-- Header (mobile) --}}
-    <header class="lg:hidden flex items-center justify-between bg-brand-900 text-white px-5 py-4">
-        <span class="font-bold">Platform Data</span>
-        <a href="{{ route('datasets.index') }}" class="text-sm text-brand-100 hover:text-white">Dataset</a>
+    <header class="lg:hidden bg-brand-900 text-white">
+        <div class="flex items-center justify-between px-5 py-4">
+            <span class="font-bold">Platform Data</span>
+            <button type="button" id="menu-tombol" aria-expanded="false" aria-controls="menu-mobile" aria-label="Buka menu"
+                    class="rounded-lg p-2 hover:bg-brand-800">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16"/>
+                </svg>
+            </button>
+        </div>
+        <nav id="menu-mobile" class="hidden border-t border-brand-800 px-3 py-2 text-sm font-medium">
+            @foreach ($nav as $n)
+                <a href="{{ route($n['rute']) }}"
+                   class="block rounded-lg px-3 py-2.5 {{ $n['aktif'] ? 'bg-brand-800' : 'hover:bg-brand-800/60' }}">{{ $n['nama'] }}</a>
+            @endforeach
+        </nav>
     </header>
+    <script>
+        const tombolMenu = document.getElementById('menu-tombol');
+        tombolMenu.addEventListener('click', () => {
+            const buka = document.getElementById('menu-mobile').classList.toggle('hidden') === false;
+            tombolMenu.setAttribute('aria-expanded', buka);
+        });
+    </script>
 
     <main class="flex-1 min-w-0">
         <div class="max-w-5xl mx-auto px-5 py-8 lg:px-10 lg:py-10">

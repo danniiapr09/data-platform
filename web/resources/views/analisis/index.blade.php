@@ -29,9 +29,8 @@
         </div>
     @else
         @php
-            $fmt = fn ($v) => $v === null ? '-' : number_format($v, abs($v) >= 100 ? 0 : 2, ',', '.');
-            $arah = ['naik' => 'naik', 'turun' => 'turun', 'stabil' => 'stabil', 'data kurang' => 'belum cukup data untuk dinilai'];
-            $namaModel = [
+            $fmt = fn ($v) =>$v === null ? '-' : number_format($v, abs($v) >= 100 ? 0 : 2, ',', '.');
+            $arah = ['naik' => 'naik', 'turun' => 'turun', 'stabil' => 'stabil', 'data kurang' => 'belum cukup data untuk dinilai'];$namaModel = [
                 'naive' => 'Nilai terakhir (naive)',
                 'moving_average' => 'Rata-rata bergerak',
                 'drift' => 'Drift',
@@ -47,7 +46,7 @@
                 <select id="nilai" name="nilai" onchange="this.form.submit()"
                         class="min-w-48 rounded-lg border border-line bg-white px-3 py-2 text-sm">
                     @foreach ($kandidat as $k)
-                        <option value="{{ $k }}" @selected($k === $nilai)>{{ $k }}</option>
+                        <option value="{{ $k }}" @selected($k === $nilai)>{{$k }}</option>
                     @endforeach
                 </select>
             </div>
@@ -59,6 +58,18 @@
                     <option value="mean" @selected($agg === 'mean')>Rata-rata per periode</option>
                 </select>
             </div>
+            @if (count($kategori))
+                <div>
+                    <label for="kelompok" class="mb-1 block text-sm font-medium">Bandingkan per</label>
+                    <select id="kelompok" name="kelompok" onchange="this.form.submit()"
+                            class="min-w-44 rounded-lg border border-line bg-white px-3 py-2 text-sm">
+                        <option value="">Tidak dibandingkan</option>
+                        @foreach ($kategori as $k)
+                            <option value="{{ $k }}" @selected($k === $kelompok)>{{$k }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <noscript><button class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Tampilkan</button></noscript>
         </form>
 
@@ -70,31 +81,44 @@
             <div role="alert" class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">{{ $galat }}</div>
         @elseif ($tren)
             @php
-                $slope = $tren['total']['slope_per_periode'] ?? null;
-                $a = $tren['total']['arah'] ?? 'data kurang';
+                $slope =$tren['total']['slope_per_periode'] ?? null;
+                $a =$tren['total']['arah'] ?? 'data kurang';
             @endphp
 
             {{-- Grafik --}}
             <section class="rounded-xl border border-line bg-white p-5">
                 <h2 class="font-semibold">Perkembangan {{ $nilai }}</h2>
                 <p class="mt-1 text-sm text-slate-600">
-                    Secara keseluruhan datanya {{ $arah[$a] ?? $a }}@if ($slope !== null && $a !== 'data kurang'),
+                    Secara keseluruhan datanya {{ $arah[$a] ?? $a }}@if ($slope !== null &&$a !== 'data kurang'),
                     dengan perubahan rata-rata {{ $fmt($slope) }} per periode @endif.
                 </p>
                 <div class="mt-4 h-80">
                     <canvas id="grafik" role="img" aria-label="Grafik perkembangan {{ $nilai }}"></canvas>
                 </div>
+                @if ($grafikKelompok)
+                    <ul class="mt-4 flex flex-wrap gap-2 text-sm">
+                        @foreach ($grafikKelompok['seri'] as $s)
+                            <li class="rounded-full border border-line bg-slate-50 px-3 py-1">
+                                {{ $s['nama'] }}: <span class="font-medium">{{ $arah[$s['arah']] ?? $s['arah'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
             </section>
 
             {{-- Buat prediksi --}}
             <section class="mt-6 rounded-xl border border-line bg-white p-5">
                 <h2 class="font-semibold">Prediksi</h2>
+                @if ($kelompok)
+                    <p class="mt-1 text-sm text-slate-600">Prediksi dibuat untuk total keseluruhan, bukan per {{ $kelompok }}.</p>
+                @endif
                 <form method="POST" action="{{ route('analisis.prediksi', $id) }}"
                       onsubmit="const b=this.querySelector('button'); b.disabled=true; b.textContent='Membuat prediksi…';"
                       class="mt-3 flex flex-wrap items-end gap-4">
                     @csrf
                     <input type="hidden" name="nilai" value="{{ $nilai }}">
                     <input type="hidden" name="agg" value="{{ $agg }}">
+                    <input type="hidden" name="kelompok" value="{{ $kelompok }}">
                     <div>
                         <label for="horizon" class="mb-1 block text-sm font-medium">Perkirakan berapa periode ke depan</label>
                         <input id="horizon" name="horizon" type="number" min="1" max="12"
@@ -109,7 +133,7 @@
                 </form>
 
                 @if ($prediksi)
-                    @php $terbaik = $prediksi['evaluasi'][0] ?? []; @endphp
+                    @php $terbaik =$prediksi['evaluasi'][0] ?? []; @endphp
 
                     <div class="mt-6 grid gap-6 lg:grid-cols-2">
                         <div>
@@ -182,35 +206,60 @@
             <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
             <script>
                 const g = @json($grafik);
+                const k = @json($grafikKelompok);
                 const angka = new Intl.NumberFormat('id-ID');
-                new Chart(document.getElementById('grafik'), {
-                    type: 'line',
-                    data: {
-                        labels: g.labels,
-                        datasets: [
-                            { label: 'Batas bawah', data: g.bawah, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
-                            { label: 'Kisaran perkiraan', data: g.atas, borderColor: 'transparent', backgroundColor: 'rgba(30,107,92,0.14)', pointRadius: 0, fill: '-1' },
-                            { label: 'Data sebenarnya', data: g.aktual, borderColor: '#16231F', backgroundColor: '#16231F', tension: 0.25, pointRadius: 3 },
-                            { label: 'Prediksi', data: g.garis, borderColor: '#1E6B5C', backgroundColor: '#1E6B5C', borderDash: [6, 5], tension: 0.25, pointRadius: 3 },
-                        ],
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: { labels: { filter: i => i.text !== 'Batas bawah', usePointStyle: true } },
-                            tooltip: {
-                                filter: i => ['Data sebenarnya', 'Prediksi'].includes(i.dataset.label),
-                                callbacks: { label: c => ` ${c.dataset.label}: ${angka.format(c.parsed.y)}` },
+                const sumbu = {
+                    y: { grid: { color: '#E8EEEC' }, ticks: { callback: v => angka.format(v) } },
+                    x: { grid: { display: false } },
+                };
+                if (k) {
+                    const warna = ['#1E6B5C', '#B7791F', '#2B6CB0', '#9B2C2C', '#6B46C1', '#2C7A7B', '#975A16', '#4A5568'];
+                    new Chart(document.getElementById('grafik'), {
+                        type: 'line',
+                        data: {
+                            labels: k.labels,
+                            datasets: k.seri.map((s, i) => ({
+                                label: s.nama, data: s.data,
+                                borderColor: warna[i % warna.length], backgroundColor: warna[i % warna.length],
+                                tension: 0.25, pointRadius: 3,
+                            })),
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { labels: { usePointStyle: true } },
+                                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${angka.format(c.parsed.y)}` } },
                             },
+                            scales: sumbu,
                         },
-                        scales: {
-                            y: { grid: { color: '#E8EEEC' }, ticks: { callback: v => angka.format(v) } },
-                            x: { grid: { display: false } },
+                    });
+                } else {
+                    new Chart(document.getElementById('grafik'), {
+                        type: 'line',
+                        data: {
+                            labels: g.labels,
+                            datasets: [
+                                { label: 'Batas bawah', data: g.bawah, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
+                                { label: 'Kisaran perkiraan', data: g.atas, borderColor: 'transparent', backgroundColor: 'rgba(30,107,92,0.14)', pointRadius: 0, fill: '-1' },
+                                { label: 'Data sebenarnya', data: g.aktual, borderColor: '#16231F', backgroundColor: '#16231F', tension: 0.25, pointRadius: 3 },
+                                { label: 'Prediksi', data: g.garis, borderColor: '#1E6B5C', backgroundColor: '#1E6B5C', borderDash: [6, 5], tension: 0.25, pointRadius: 3 },
+                            ],
                         },
-                    },
-                });
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { labels: { filter: i => i.text !== 'Batas bawah', usePointStyle: true } },
+                                tooltip: {
+                                    filter: i => ['Data sebenarnya', 'Prediksi'].includes(i.dataset.label),
+                                    callbacks: { label: c => ` ${c.dataset.label}: ${angka.format(c.parsed.y)}` },
+                                },
+                            },
+                            scales: sumbu,
+                        },
+                    });
+                }
             </script>
         @endif
     @endif

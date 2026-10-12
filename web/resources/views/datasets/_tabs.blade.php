@@ -2,6 +2,7 @@
     $tab = [
         ['kunci' => 'data', 'nama' => 'Data', 'url' => route('datasets.show', $id)],
         ['kunci' => 'anomali', 'nama' => 'Review anomali', 'url' => route('anomali.index', $id)],
+        ['kunci' => 'statistik', 'nama' => 'Ringkasan statistik', 'url' => route('statistik.index', $id)],
         ['kunci' => 'analisis', 'nama' => 'Analisis dan prediksi', 'url' => route('analisis.index', $id)],
     ];
 @endphp

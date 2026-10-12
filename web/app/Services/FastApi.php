@@ -30,4 +30,17 @@ class FastApi
         }
         return collect($json)->first(fn ($d) => ($d['id'] ?? $d['dataset_id'] ?? null) == $id) ?? [];
     }
+
+        /** Semua dataset, terbaru di atas. */
+    public static function daftar(): array
+    {
+        $json = self::http()->get('/datasets')->json() ?? [];
+        if (! array_is_list($json)) {
+            $json = $json['datasets'] ?? $json['items'] ?? [];
+        }
+        return collect($json)
+            ->sortByDesc(fn ($d) => $d['id'] ?? $d['dataset_id'] ?? 0)
+            ->values()
+            ->all();
+    }
 }

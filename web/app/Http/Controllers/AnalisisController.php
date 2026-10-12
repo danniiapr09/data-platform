@@ -12,21 +12,34 @@ class AnalisisController extends Controller
     {
         try {
             $dataset = FastApi::dataset($id);
-            $eda = FastApi::http()->get("/datasets/{$id}/eda");
+            $edaRes = FastApi::http()->get("/datasets/{$id}/eda");
 
-            if ($eda->failed()) {
-                abort_unless($eda->status() === 400, 404);
+            if ($edaRes->failed()) {
+                abort_unless($edaRes->status() === 400, 404);
                 return view('analisis.index', ['id' => $id, 'dataset' => $dataset, 'belumBersih' => true]);
             }
 
-            $kandidat = $eda->json('kandidat_indikator') ?? [];
+            $eda = $edaRes->json();
+            $kandidat = $eda['kandidat_indikator'] ?? [];
+            $waktu = $eda['kolom_waktu'] ?? null;
+
+            // kolom teks yang cocok untuk membandingkan kelompok (2 sampai 30 nilai berbeda)
+            $kategori = collect($eda['ringkasan']['kategorikal'] ?? [])
+                ->filter(fn ($v, $k) => $k !== $waktu && ($v['unik'] ?? 0) >= 2 && ($v['unik'] ?? 0) <= 30)
+                ->keys()->all();
+
             $nilai = $request->query('nilai', $kandidat[0] ?? null);
             $agg = in_array($request->query('agg'), ['sum', 'mean'], true) ? $request->query('agg') : 'sum';
+            $kelompok = in_array($request->query('kelompok'), $kategori, true) ? $request->query('kelompok') : null;
 
             $tren = null;
             $galat = null;
             if ($nilai) {
-                $r = FastApi::http()->get("/datasets/{$id}/eda/trend", ['nilai' => $nilai, 'agg' => $agg]);
+                $param = ['nilai' => $nilai, 'agg' => $agg];
+                if ($kelompok) {
+                    $param['group_by'] = $kelompok;
+                }
+                $r = FastApi::http()->get("/datasets/{$id}/eda/trend", $param);
                 if ($r->successful()) {
                     $tren = $r->json();
                 } else {
@@ -45,6 +58,7 @@ class AnalisisController extends Controller
         }
 
         $grafik = null;
+        $grafikKelompok = null;
         if ($tren) {
             $titik = $tren['total']['titik'] ?? [];
             $labels = array_map(fn ($t) => (string) $t['periode'], $titik);
@@ -63,6 +77,23 @@ class AnalisisController extends Controller
                 }
             }
             $grafik = compact('labels', 'aktual', 'garis', 'bawah', 'atas');
+
+            if ($kelompok && ! empty($tren['per_kelompok'])) {
+                $labelAsli = array_map(fn ($t) => (string) $t['periode'], $titik);
+                $seri = [];
+                foreach ($tren['per_kelompok'] as $namaKelompok => $g) {
+                    $peta = [];
+                    foreach ($g['titik'] ?? [] as $t) {
+                        $peta[(string) $t['periode']] = $t['nilai'];
+                    }
+                    $seri[] = [
+                        'nama' => (string) $namaKelompok,
+                        'arah' => $g['arah'] ?? null,
+                        'data' => array_map(fn ($l) => $peta[$l] ?? null, $labelAsli),
+                    ];
+                }
+                $grafikKelompok = ['labels' => $labelAsli, 'seri' => $seri];
+            }
         }
 
         return view('analisis.index', [
@@ -70,12 +101,15 @@ class AnalisisController extends Controller
             'dataset' => $dataset,
             'belumBersih' => false,
             'kandidat' => $kandidat,
+            'kategori' => $kategori,
             'nilai' => $nilai,
             'agg' => $agg,
+            'kelompok' => $kelompok,
             'tren' => $tren,
             'galat' => $galat,
             'prediksi' => $prediksi,
             'grafik' => $grafik,
+            'grafikKelompok' => $grafikKelompok,
         ]);
     }
 
@@ -84,6 +118,7 @@ class AnalisisController extends Controller
         $data = $request->validate([
             'nilai' => 'required|string',
             'agg' => 'required|in:sum,mean',
+            'kelompok' => 'nullable|string',
             'horizon' => 'required|integer|min:1|max:12',
         ], ['horizon.*' => 'Isi jumlah periode antara 1 dan 12.']);
 
@@ -107,7 +142,12 @@ class AnalisisController extends Controller
         session()->put("prediksi.{$id}", $hasil);
 
         return redirect()
-            ->route('analisis.index', ['id' => $id, 'nilai' => $data['nilai'], 'agg' => $data['agg']])
+            ->route('analisis.index', array_filter([
+                'id' => $id,
+                'nilai' => $data['nilai'],
+                'agg' => $data['agg'],
+                'kelompok' => $data['kelompok'] ?? null,
+            ]))
             ->with('sukses', 'Prediksi berhasil dibuat.');
     }
 }
