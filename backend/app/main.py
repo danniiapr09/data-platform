@@ -7,6 +7,7 @@ from sqlalchemy import text
 from . import models  # noqa: F401  (daftarkan semua tabel)
 from .api.analysis import router as analysis_router
 from .api.cleaning import router as cleaning_router
+from .api.compare import router as compare_router
 from .api.datasets import router as datasets_router
 from .api.export import router as export_router
 from .api.forecast import router as forecast_router
@@ -23,6 +24,7 @@ app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins],
 app.include_router(datasets_router)
 app.include_router(cleaning_router)
 app.include_router(analysis_router)
+app.include_router(compare_router)
 app.include_router(forecast_router)
 app.include_router(reports_router)
 app.include_router(export_router)
