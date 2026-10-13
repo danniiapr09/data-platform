@@ -6,6 +6,7 @@ use App\Http\Controllers\AnalisisController;
 use App\Http\Controllers\AnomaliController;
 use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\StatistikController;
+use App\Http\Controllers\RiwayatController;
 
 Route::redirect('/', '/datasets');
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets.index');
@@ -22,3 +23,8 @@ Route::post('/datasets/{id}/prediksi', [AnalisisController::class, 'prediksi'])-
 
 Route::get('/', [BerandaController::class, 'index'])->name('beranda');
 Route::get('/datasets/{id}/statistik', [StatistikController::class, 'index'])->name('statistik.index');
+
+Route::get('/datasets/{id}/riwayat', [RiwayatController::class, 'index'])->name('riwayat.index');
+Route::get('/datasets/{id}/unduh/{jenis}', [RiwayatController::class, 'unduh'])
+    ->whereIn('jenis', ['xlsx', 'forecast'])
+    ->name('riwayat.unduh');

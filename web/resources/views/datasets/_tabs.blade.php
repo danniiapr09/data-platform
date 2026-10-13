@@ -4,6 +4,7 @@
         ['kunci' => 'anomali', 'nama' => 'Review anomali', 'url' => route('anomali.index', $id)],
         ['kunci' => 'statistik', 'nama' => 'Ringkasan statistik', 'url' => route('statistik.index', $id)],
         ['kunci' => 'analisis', 'nama' => 'Analisis dan prediksi', 'url' => route('analisis.index', $id)],
+        ['kunci' => 'riwayat', 'nama' => 'Riwayat dan unduhan', 'url' => route('riwayat.index', $id)],
     ];
 @endphp
 <div class="mb-6 border-b border-line">

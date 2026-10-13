@@ -18,6 +18,21 @@
     {{-- Area unggah --}}
     <form id="form-unggah" method="POST" action="{{ route('datasets.store') }}" enctype="multipart/form-data">
         @csrf
+        <div class="mb-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="nama" class="mb-1 block text-sm font-medium">Nama dataset <span class="font-normal text-slate-500">(opsional)</span></label>
+                <input id="nama" name="nama" type="text" maxlength="150" value="{{ old('nama') }}"
+                       placeholder="Misalnya: Jumlah siswa 2019 sampai 2024"
+                       class="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label for="jenis" class="mb-1 block text-sm font-medium">Jenis data <span class="font-normal text-slate-500">(opsional)</span></label>
+                <input id="jenis" name="jenis" type="text" maxlength="50" value="{{ old('jenis') }}"
+                       placeholder="Misalnya: pendidikan"
+                       class="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm">
+            </div>
+        </div>
+
         <input id="file" type="file" name="file" accept=".csv,.xlsx,.xls" class="peer sr-only">
         <label id="zona" for="file"
                class="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-200 bg-white px-6 py-10 text-center cursor-pointer transition hover:border-brand-600 hover:bg-brand-50 peer-focus-visible:border-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600">

@@ -56,8 +56,8 @@
     @include('datasets._tabs', ['id' => $id, 'aktif' => 'data'])
 
     {{-- Hasil pembersihan --}}
-    @if (session('laporan'))
-        @php $r = session('laporan'); @endphp
+    @if ($laporan)
+        @php $r = $laporan; @endphp
         <section class="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-5">
             <h2 class="font-semibold mb-1">Hasil pembersihan</h2>
             <p class="text-sm leading-relaxed max-w-2xl">

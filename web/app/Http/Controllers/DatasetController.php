@@ -2,38 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\FastApi;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 class DatasetController extends Controller
 {
-    private const OFFLINE = 'Layanan data tidak bisa dihubungi. Pastikan Docker sudah menyala, lalu muat ulang halaman.';
-
-    private function api()
-    {
-        return Http::baseUrl(config('services.fastapi.url'))->acceptJson()->timeout(120);
-    }
-
-    /** Daftar dataset dari FastAPI, terbaru di atas. */
-    private function daftar(): array
-    {
-        $json = $this->api()->get('/datasets')->json() ?? [];
-        if (! array_is_list($json)) {
-            $json = $json['datasets'] ?? $json['items'] ?? [];
-        }
-        return collect($json)
-            ->sortByDesc(fn ($d) => $d['id'] ?? $d['dataset_id'] ?? 0)
-            ->values()
-            ->all();
-    }
-
     public function index()
     {
         $datasets = [];
         $offline = false;
         try {
-            $datasets = $this->daftar();
+            $datasets = FastApi::daftar();
         } catch (ConnectionException $e) {
             $offline = true;
         }
@@ -42,27 +22,36 @@ class DatasetController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(
-            ['file' => 'required|file|max:10240'],
+        $data = $request->validate(
+            [
+                'file' => 'required|file|max:10240',
+                'nama' => 'nullable|string|max:150',
+                'jenis' => 'nullable|string|max:50',
+            ],
             [
                 'file.required' => 'Pilih file CSV atau Excel terlebih dahulu.',
                 'file.max' => 'Ukuran file maksimal 10 MB.',
+                'nama.max' => 'Nama dataset maksimal 150 huruf.',
+                'jenis.max' => 'Jenis data maksimal 50 huruf.',
             ]
         );
         $file = $request->file('file');
+        $isian = array_filter(
+            ['nama' => $data['nama'] ?? null, 'jenis' => $data['jenis'] ?? null],
+            fn ($v) => filled($v)
+        );
 
         try {
-            $res = $this->api()
+            $res = FastApi::http()
                 ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
-                ->post('/datasets/upload');
+                ->post('/datasets/upload', $isian);
         } catch (ConnectionException $e) {
-            return back()->withErrors(['file' => self::OFFLINE]);
+            return back()->withErrors(['file' => FastApi::OFFLINE]);
         }
 
         if ($res->failed()) {
-            $detail = $res->json('detail');
             return back()->withErrors([
-                'file' => is_string($detail) ? $detail : 'File tidak bisa diproses. Periksa formatnya (CSV atau Excel).',
+                'file' => FastApi::pesan($res, 'File tidak bisa diproses. Periksa formatnya (CSV atau Excel).'),
             ]);
         }
 
@@ -73,14 +62,26 @@ class DatasetController extends Controller
     public function show(int $id)
     {
         try {
-            $dataset = collect($this->daftar())
-                ->first(fn ($d) => ($d['id'] ?? $d['dataset_id'] ?? null) == $id) ?? [];
+            $dataset = FastApi::dataset($id);
             $status = $dataset['status'] ?? 'uploaded';
             $bersih = in_array($status, ['cleaned', 'forecasted']);
 
-            $res = $this->api()->get($bersih ? "/datasets/{$id}/clean-preview" : "/datasets/{$id}/preview");
+            $res = FastApi::http()->get(
+                $bersih ? "/datasets/{$id}/clean-preview" : "/datasets/{$id}/preview",
+                ['limit' => 50]
+            );
+
+            // laporan kualitas: dari hasil pembersihan barusan, atau diambil dari server
+            $laporan = session('laporan');
+            if (! $laporan && $bersih) {
+                $lr = FastApi::http()->get("/datasets/{$id}/clean-report");
+                if ($lr->successful()) {
+                    $j = $lr->json() ?? [];
+                    $laporan = $j['laporan'] ?? $j;
+                }
+            }
         } catch (ConnectionException $e) {
-            return redirect()->route('datasets.index')->with('gagal', self::OFFLINE);
+            return redirect()->route('datasets.index')->with('gagal', FastApi::OFFLINE);
         }
         abort_if($res->failed(), 404);
 
@@ -96,6 +97,7 @@ class DatasetController extends Controller
             'bersih' => $bersih,
             'rows' => $rows,
             'columns' => $columns,
+            'laporan' => $laporan,
             'mentah' => $data,
         ]);
     }
@@ -103,14 +105,13 @@ class DatasetController extends Controller
     public function clean(int $id)
     {
         try {
-            $res = $this->api()->post("/datasets/{$id}/clean");
+            $res = FastApi::http()->post("/datasets/{$id}/clean");
         } catch (ConnectionException $e) {
-            return back()->with('gagal', self::OFFLINE);
+            return back()->with('gagal', FastApi::OFFLINE);
         }
 
         if ($res->failed()) {
-            $detail = $res->json('detail');
-            return back()->with('gagal', is_string($detail) ? $detail : 'Data belum bisa dibersihkan.');
+            return back()->with('gagal', FastApi::pesan($res, 'Data belum bisa dibersihkan.'));
         }
 
         return back()
