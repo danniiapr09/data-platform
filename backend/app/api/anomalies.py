@@ -8,7 +8,8 @@ from ..models import Anomaly, AuditLog, Dataset, RawData
 
 router = APIRouter(prefix="/datasets/{dataset_id}/anomalies", tags=["anomali"])
 
-STATUSES = ("pending", "diterima", "ditolak")
+REVIEW_STATUSES = ("pending", "diterima", "ditolak")   # pilihan pegawai saat review
+STATUSES = REVIEW_STATUSES + ("diperbaiki",)            # "diperbaiki" otomatis saat sel diedit
 GROUPS = ("jenis", "kolom", "status", "data")
 
 
@@ -98,8 +99,8 @@ def summary(dataset_id: int, group_by: str = "jenis", data_kolom: str | None = N
 
     groups: dict = {}
     for a in rows:
-        g = groups.setdefault(key(a), {"kelompok": key(a), "jumlah": 0, "pending": 0,
-                                       "diterima": 0, "ditolak": 0, "contoh": []})
+        g = groups.setdefault(key(a), {"kelompok": key(a), "jumlah": 0,
+                                       **{s: 0 for s in STATUSES}, "contoh": []})
         g["jumlah"] += 1
         g[a.status] = g.get(a.status, 0) + 1
         if len(g["contoh"]) < 3:
@@ -113,7 +114,7 @@ def summary(dataset_id: int, group_by: str = "jenis", data_kolom: str | None = N
         deskripsi = (f"{total} anomali dikelompokkan per {group_by if group_by != 'data' else data_kolom}: {top}"
                      f"{', dan lainnya' if len(data) > 5 else ''}. "
                      f"{per_status['pending']} masih pending, {per_status['diterima']} diterima, "
-                     f"{per_status['ditolak']} ditolak.")
+                     f"{per_status['ditolak']} ditolak, {per_status['diperbaiki']} diperbaiki.")
     else:
         deskripsi = "Tidak ada anomali."
     return {"dataset_id": dataset_id, "group_by": group_by, "total": total,
@@ -148,11 +149,11 @@ class BulkReviewIn(BaseModel):
 def bulk_review(dataset_id: int, body: BulkReviewIn, db: Session = Depends(get_db)):
     """Review massal, mis. terima semua anomali 'kosong' sekaligus."""
     _get_dataset(db, dataset_id)
-    _check_status(body.status)
+    _check_status(body.status, REVIEW_STATUSES)
     _check_status(body.dari_status, STATUSES + ("semua",))
     if not (body.jenis or body.kolom or body.ids or body.semua):
         raise HTTPException(400, "Tentukan jenis, kolom, ids, atau semua=true agar tidak mengubah tanpa sengaja.")
-    q = _filtered(dataset_id, body.jenis, body.kolom)
+    q = _filtered(dataset_id, body.jenis, body.kolom).where(Anomaly.status !="diperbaiki")
     if body.ids:
         q = q.where(Anomaly.id.in_(body.ids))
     if body.dari_status != "semua":
