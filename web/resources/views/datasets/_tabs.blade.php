@@ -1,7 +1,9 @@
 @php
     $tab = [
         ['kunci' => 'data', 'nama' => 'Data', 'url' => route('datasets.show', $id)],
+        ['kunci' => 'dashboard', 'nama' => 'Dashboard', 'url' => route('dashboard.index', $id)],
         ['kunci' => 'anomali', 'nama' => 'Review anomali', 'url' => route('anomali.index', $id)],
+        ['kunci' => 'edit', 'nama' => 'Edit data', 'url' => route('edit.index', $id)],
         ['kunci' => 'statistik', 'nama' => 'Ringkasan statistik', 'url' => route('statistik.index', $id)],
         ['kunci' => 'analisis', 'nama' => 'Analisis dan prediksi', 'url' => route('analisis.index', $id)],
         ['kunci' => 'riwayat', 'nama' => 'Riwayat dan unduhan', 'url' => route('riwayat.index', $id)],

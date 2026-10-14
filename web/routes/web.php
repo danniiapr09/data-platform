@@ -7,6 +7,8 @@ use App\Http\Controllers\AnomaliController;
 use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\StatistikController;
 use App\Http\Controllers\RiwayatController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EditController;
 
 Route::redirect('/', '/datasets');
 Route::get('/datasets', [DatasetController::class, 'index'])->name('datasets.index');
@@ -28,3 +30,8 @@ Route::get('/datasets/{id}/riwayat', [RiwayatController::class, 'index'])->name(
 Route::get('/datasets/{id}/unduh/{jenis}', [RiwayatController::class, 'unduh'])
     ->whereIn('jenis', ['xlsx', 'forecast'])
     ->name('riwayat.unduh');
+
+Route::get('/datasets/{id}/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+
+Route::get('/datasets/{id}/edit-data', [EditController::class, 'index'])->name('edit.index');
+Route::post('/datasets/{id}/edit-data', [EditController::class, 'simpan'])->name('edit.simpan');

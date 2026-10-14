@@ -203,7 +203,7 @@
                 @endif
             </section>
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+            <script src="{{ asset('js/chart.umd.js') }}"></script>
             <script>
                 const g = @json($grafik);
                 const k = @json($grafikKelompok);
