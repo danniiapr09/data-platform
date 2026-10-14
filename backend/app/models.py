@@ -85,3 +85,17 @@ class AuditLog(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     aksi: Mapped[str] = mapped_column(String(200))
     waktu: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+class DataEdit(Base):
+    """Jejak setiap edit manual pada data bersih: siapa, kapan, nilai lama -> baru, dan alasannya."""
+    __tablename__ = "data_edits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("datasets.id"), index=True)
+    versi_baru: Mapped[int] = mapped_column(Integer)
+    row_index: Mapped[int] = mapped_column(Integer)
+    kolom: Mapped[str] = mapped_column(String(100))
+    nilai_lama: Mapped[str | None] = mapped_column(Text, nullable=True)   # disimpan sebagai JSON
+    nilai_baru: Mapped[str | None] = mapped_column(Text, nullable=True)   # disimpan sebagai JSON
+    alasan: Mapped[str] = mapped_column(Text)
+    diubah_oleh: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    waktu: Mapped[datetime] = mapped_column(DateTime, default=now)

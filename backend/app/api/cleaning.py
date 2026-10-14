@@ -9,16 +9,21 @@ from sqlalchemy.orm import Session
 from ..cleaning.engine import clean, load_rules
 from ..config import settings
 from ..db import get_db
-from ..models import Anomaly, AuditLog, CleanData, Dataset, ProcessingLog, RawData
+from ..models import Anomaly, AuditLog, CleanData, DataEdit, Dataset, ProcessingLog, RawData
 
 router = APIRouter(tags=["cleaning"])
 
 
 @router.post("/datasets/{dataset_id}/clean")
-def run_cleaning(dataset_id: int, db: Session = Depends(get_db)):
+def run_cleaning(dataset_id: int, timpa: bool = False, db: Session = Depends(get_db)):
     ds = db.get(Dataset, dataset_id)
     if not ds:
         raise HTTPException(404, "Dataset tidak ditemukan.")
+    sudah_diedit = db.scalar(select(func.count()).select_from(DataEdit)
+                             .where(DataEdit.dataset_id == dataset_id))
+    if sudah_diedit and not timpa:
+        raise HTTPException(409, "Dataset ini sudah punya edit manual. Cleaning ulang membuat versi baru dari "
+                                 "data mentah dan membuang hasil edit tersebut. Tambahkan ?timpa=true jika memang diinginkan.")
     raw = db.scalars(select(RawData).where(RawData.dataset_id == dataset_id)
                      .order_by(RawData.row_index)).all()
     if not raw:
