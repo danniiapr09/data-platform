@@ -1,12 +1,13 @@
 import json
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Anomaly, AuditLog, CleanData, DataEdit, Dataset, Forecast, ProcessingLog
+from ..security import Actor, get_actor
 
 router = APIRouter(prefix="/datasets/{dataset_id}", tags=["edit data"])
 
@@ -67,7 +68,7 @@ def _dump(v) -> str:
 
 
 @router.patch("/data")
-def edit_data(dataset_id: int, body: EditIn, x_user: str | None = Header(None),
+def edit_data(dataset_id: int, body: EditIn, actor: Actor = Depends(get_actor),
               db: Session = Depends(get_db)):
     """Ubah nilai sel di data bersih. Data mentah tidak disentuh; hasilnya jadi versi baru."""
     _get_dataset(db, dataset_id)
@@ -107,7 +108,7 @@ def edit_data(dataset_id: int, body: EditIn, x_user: str | None = Header(None),
         {"dataset_id": dataset_id, "version": new_version, "row_index": r.row_index,
          "row_json": {**r.row_json, **changed.get(r.row_index, {})}} for r in rows])
 
-    user = (x_user or "").strip()[:100] or None
+    user = actor.user
     for r, kol, lama, baru in changes:
         db.add(DataEdit(dataset_id=dataset_id, versi_baru=new_version, row_index=r.row_index,
                         kolom=kol, nilai_lama=_dump(lama), nilai_baru=_dump(baru),

@@ -1,6 +1,7 @@
+import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -15,6 +16,7 @@ from .api.export import router as export_router
 from .api.forecast import router as forecast_router
 from .api.reports import router as reports_router
 from .db import Base, SessionLocal, engine
+from .security import require_api_key
 
 app = FastAPI(title="Platform Data & Forecasting")
 
@@ -23,21 +25,20 @@ origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins],
                    allow_methods=["*"], allow_headers=["*"])
 
-app.include_router(datasets_router)
-app.include_router(cleaning_router)
-app.include_router(anomalies_router)
-app.include_router(edits_router)
-app.include_router(analysis_router)
-app.include_router(compare_router)
-app.include_router(forecast_router)
-app.include_router(reports_router)
-app.include_router(export_router)
+# Semua endpoint data dikunci dengan X-API-Key (aktif kalau INTERNAL_API_KEY diisi). /health tetap terbuka.
+guard = [Depends(require_api_key)]
+for router in (datasets_router, cleaning_router, anomalies_router, edits_router, analysis_router,
+               compare_router, forecast_router, reports_router, export_router):
+    app.include_router(router, dependencies=guard)
 
 
 @app.on_event("startup")
-def create_tables():
-    # Sementara pakai create_all.
+def startup():
+    # Sementara pakai create_all. Nanti ganti ke Alembic kalau skema sudah stabil.
     Base.metadata.create_all(bind=engine)
+    if not os.getenv("INTERNAL_API_KEY"):
+        logging.getLogger("uvicorn.error").warning(
+            "INTERNAL_API_KEY belum diisi: API terbuka tanpa kunci (hanya untuk development).")
 
 
 @app.get("/health")
