@@ -2,86 +2,126 @@
 @section('title', 'Beranda')
 
 @section('content')
-    @php
-        $urut = ['uploaded' => 1, 'cleaned' => 2, 'forecasted' => 3];
-        $label = [1 => 'Diunggah', 2 => 'Dibersihkan', 3 => 'Sudah diprediksi'];
-    @endphp
+@php
+    $urut = ['uploaded' => 1, 'cleaned' => 2, 'forecasted' => 3];
+@endphp
 
-    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold">Beranda</h1>
-            <p class="mt-1 max-w-xl text-slate-600">
-                @if ($total > 0)
-                    Ada {{ $total }} dataset: {{ $hitung[1] }} baru diunggah, {{ $hitung[2] }} sudah dibersihkan,
-                    dan {{ $hitung[3] }} sudah diprediksi.
-                @else
-                    Belum ada dataset. Unggah file pertama untuk memulai.
-                @endif
-            </p>
-        </div>
-        <a href="{{ route('datasets.index') }}"
-           class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-            Unggah dataset
-        </a>
-    </div>
+{{-- Hero bergradien + tombol unggah --}}
+{{--
+    $hitung dikonfirmasi dari BerandaController:
+      $hitung[1] = jumlah dataset berstatus 'uploaded'
+      $hitung[2] = jumlah dataset berstatus 'cleaned'
+      $hitung[3] = jumlah dataset berstatus 'forecasted'
+    Tidak ada kalkulasi ulang di view.
+--}}
+<x-halaman-header
+    judul="Beranda"
+    :deskripsi="$total > 0 ? $total . ' dataset terdaftar.' : 'Belum ada dataset. Unggah file pertama untuk memulai.'"
+    :gradien="true"
+>
+    <x-tombol varian="terang" href="{{ route('datasets.index') }}">
+        Unggah dataset
+    </x-tombol>
+</x-halaman-header>
 
-    @if ($offline)
-        <div role="alert" class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Layanan data tidak bisa dihubungi. Pastikan Docker sudah menyala, lalu muat ulang halaman.
-        </div>
-    @endif
+{{-- Notifikasi offline --}}
+@if ($offline)
+    <x-notifikasi
+        tipe="peringatan"
+        pesan="Layanan data tidak bisa dihubungi. Pastikan Docker sudah menyala, lalu muat ulang halaman."
+        class="mb-6"
+    />
+@endif
 
-    <section class="mb-8">
-        <h2 class="mb-3 text-lg font-semibold">Perlu ditinjau</h2>
-        @if (count($perluDitinjau))
-            <div class="divide-y divide-line rounded-xl border border-line bg-white">
+{{-- Kartu metrik: satu kolom di mobile (360px aman), tiga kolom mulai sm --}}
+{{-- Pilihan: grid-cols-1 sm:grid-cols-3 — angka informatif lebih baik ditumpuk daripada digeser --}}
+<div class="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <x-kartu-metrik
+        :nilai="$hitung[1]"
+        label="Baru diunggah"
+        varian="abu"
+        ikon-path="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"
+    />
+    <x-kartu-metrik
+        :nilai="$hitung[2]"
+        label="Sudah dibersihkan"
+        varian="brand"
+        ikon-path="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+    <x-kartu-metrik
+        :nilai="$hitung[3]"
+        label="Sudah diprediksi"
+        varian="hijau"
+        ikon-path="M13 10V3L4 14h7v7l9-11h-7z"
+    />
+</div>
+
+{{-- Bagian: Anomali perlu ditinjau --}}
+<section class="mb-8">
+    <h2 class="mb-3 text-base font-semibold text-ink">Perlu ditinjau</h2>
+    @if (count($perluDitinjau))
+        <x-kartu padding="tanpa-padding">
+            <ul class="divide-y divide-line" role="list">
                 @foreach ($perluDitinjau as $p)
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                    <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                         <div>
-                            <div class="font-semibold">{{ $p['nama'] }}</div>
+                            <div class="font-semibold text-ink">{{ $p['nama'] }}</div>
                             <div class="text-sm text-slate-600">{{ $p['jumlah'] }} anomali menunggu review</div>
                         </div>
-                        <a href="{{ route('anomali.index', ['id' => $p['id'], 'status' => 'pending']) }}"
-                           class="rounded-lg border border-brand-600 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                        <x-tombol
+                            varian="ghost"
+                            href="{{ route('anomali.index', ['id' => $p['id'], 'status' => 'pending']) }}"
+                        >
                             Tinjau anomali
-                        </a>
-                    </div>
+                        </x-tombol>
+                    </li>
                 @endforeach
-            </div>
-        @else
-            <div class="rounded-xl border border-line bg-white px-5 py-6 text-sm text-slate-600">
-                Tidak ada anomali yang menunggu review.
-            </div>
-        @endif
-    </section>
+            </ul>
+        </x-kartu>
+    @else
+        <x-keadaan-kosong judul="Tidak ada anomali yang menunggu review." />
+    @endif
+</section>
 
-    <section>
-        <div class="mb-3 flex items-baseline justify-between">
-            <h2 class="text-lg font-semibold">Dataset terbaru</h2>
-            <a href="{{ route('datasets.index') }}" class="text-sm font-medium text-brand-700 hover:underline">Lihat semua</a>
-        </div>
-        @if (count($terbaru))
-            <div class="divide-y divide-line rounded-xl border border-line bg-white">
+{{-- Bagian: Dataset terbaru --}}
+<section>
+    <div class="mb-3 flex items-baseline justify-between">
+        <h2 class="text-base font-semibold text-ink">Dataset terbaru</h2>
+        <a href="{{ route('datasets.index') }}" class="text-sm font-medium text-brand-700 hover:underline">
+            Lihat semua
+        </a>
+    </div>
+    @if (count($terbaru))
+        <x-kartu padding="tanpa-padding">
+            <ul class="divide-y divide-line" role="list">
                 @foreach ($terbaru as $d)
                     @php
-                        $did = $d['id'] ?? $d['dataset_id'] ?? 0;
-                        $n = $urut[$d['status'] ?? 'uploaded'] ?? 1;
+                        $did    = $d['id'] ?? $d['dataset_id'] ?? 0;
+                        $status = $d['status'] ?? 'uploaded';
                     @endphp
-                    <a href="{{ route('datasets.show', $did) }}" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-brand-50/60">
-                        <span class="font-semibold">{{ $d['nama'] ?? 'Dataset #'.$did }}</span>
-                        <span class="flex items-center gap-3">
-                            <span class="flex gap-1" aria-hidden="true">
-                                @for ($i = 1; $i <= 3; $i++)
-                                    <span class="h-1.5 w-6 rounded-full {{ $i <= $n ? 'bg-brand-600' : 'bg-line' }}"></span>
-                                @endfor
-                            </span>
-                            <span class="text-sm font-medium text-brand-700">{{ $label[$n] }}</span>
-                        </span>
-                    </a>
+                    <li>
+                        {{-- hover mengangkat: motion-safe: agar dihormati prefers-reduced-motion --}}
+                        <a href="{{ route('datasets.show', $did) }}"
+                           class="flex flex-wrap items-center justify-between gap-3 px-5 py-4
+                                  transition-all duration-150
+                                  hover:bg-brand-50/60
+                                  motion-safe:hover:-translate-y-px motion-safe:hover:shadow-card">
+                            <span class="font-semibold text-ink">{{ $d['nama'] ?? 'Dataset #'.$did }}</span>
+                            <x-badge :status="$status" />
+                        </a>
+                    </li>
                 @endforeach
-            </div>
-        @else
-            <div class="rounded-xl border border-line bg-white px-5 py-6 text-sm text-slate-600">Belum ada dataset.</div>
-        @endif
-    </section>
+            </ul>
+        </x-kartu>
+    @else
+        <x-keadaan-kosong
+            judul="Belum ada dataset."
+            deskripsi="Unggah file CSV atau Excel untuk memulai pengolahan data."
+        >
+            <x-tombol href="{{ route('datasets.index') }}">
+                Unggah dataset pertama
+            </x-tombol>
+        </x-keadaan-kosong>
+    @endif
+</section>
 @endsection

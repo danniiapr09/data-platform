@@ -20,15 +20,144 @@
             <p class="text-sm text-slate-500 mt-1">Dataset #{{ $id }}</p>
         </div>
 
-        <form method="POST" action="{{ route('datasets.clean', $id) }}"
-              onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Membersihkan…';">
-            @csrf
-            <button type="submit"
-                    class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ $bersih ? 'Bersihkan ulang' : 'Bersihkan data' }}
+        @if ($bersih)
+            {{-- Tombol pemicu dialog konfirmasi A --}}
+            <button type="button"
+                    onclick="bukaDialog_dialogBersihkanUlang(this)"
+                    class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 focus-visible:outline-brand-600">
+                Bersihkan ulang
             </button>
-        </form>
+        @else
+            {{-- Belum pernah dibersihkan: langsung proses tanpa dialog --}}
+            <form method="POST" action="{{ route('datasets.clean', $id) }}"
+                  onsubmit="const b = this.querySelector('button'); b.disabled = true; b.textContent = 'Membersihkan…';">
+                @csrf
+                <button type="submit"
+                        class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Bersihkan data
+                </button>
+            </form>
+        @endif
     </div>
+
+    {{-- DIALOG A: Konfirmasi Bersihkan Ulang Biasa --}}
+    @if ($bersih)
+        <x-konfirmasi-dialog
+            id="dialogBersihkanUlang"
+            judul="Bersihkan ulang dataset ini?"
+            deskripsi="Sistem akan menjalankan ulang aturan pembersihan mulai dari data mentah asli."
+            varian="amber"
+            teksKonfirmasi="Ya, bersihkan ulang"
+            teksBatal="Batal"
+            :action="route('datasets.clean', $id)">
+            <div class="space-y-4">
+                {{-- Kelompok: Yang akan berubah --}}
+                <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                    <div class="flex items-center gap-2 font-semibold text-amber-900 mb-2">
+                        <svg class="h-4 w-4 shrink-0 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span>Yang akan diperbarui</span>
+                    </div>
+                    <ul class="space-y-2 text-xs leading-relaxed text-amber-950">
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                            <span>Daftar anomali dan status tinjauan (diterima/ditolak) akan <strong>dihapus dan dideteksi ulang</strong> dari awal.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                            <span>Hasil pembersihan akan disimpan sebagai <strong>versi data bersih baru</strong>.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                            <span>Prediksi yang sudah dibuat tidak otomatis diperbarui, sehingga perlu dibuat ulang bila diinginkan.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                {{-- Kelompok: Yang tetap aman --}}
+                <div class="rounded-xl border border-line bg-slate-50 p-4">
+                    <div class="flex items-center gap-2 font-semibold text-ink mb-2">
+                        <svg class="h-4 w-4 shrink-0 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Yang tetap aman</span>
+                    </div>
+                    <ul class="space-y-2 text-xs leading-relaxed text-slate-700">
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"></span>
+                            <span><strong>Berkas data mentah asli</strong> tidak akan diubah atau dihapus sama sekali.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"></span>
+                            <span>Riwayat proses sebelumnya tetap tercatat di sistem.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <p class="text-xs text-slate-500 italic">
+                    Catatan: Jika dataset ini memiliki perbaikan data manual, Anda akan dimintai persetujuan khusus sebelum data ditimpa.
+                </p>
+            </div>
+        </x-konfirmasi-dialog>
+    @endif
+
+    {{-- DIALOG B: Muncul otomatis setelah backend merespons 409 (Punya edit manual) --}}
+    @if (session('konfirmasi_timpa'))
+        <x-konfirmasi-dialog
+            id="dialogKonfirmasiTimpa"
+            judul="Persetujuan: Timpa perbaikan manual?"
+            deskripsi="Dataset ini tercatat memiliki perbaikan data yang pernah Anda simpan secara manual."
+            varian="merah"
+            teksKonfirmasi="Ya, bersihkan ulang dan timpa"
+            teksBatal="Batal, pertahankan edit"
+            :action="route('datasets.clean', $id)">
+            <x-slot:hiddenFields>
+                <input type="hidden" name="timpa" value="1">
+            </x-slot:hiddenFields>
+
+            <div class="space-y-4">
+                <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+                    <div class="flex items-center gap-2 font-semibold text-red-900 mb-2">
+                        <svg class="h-4 w-4 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span>Peringatan kehilangan perbaikan data</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-red-900">
+                        Pembersihan ulang akan membentuk <strong>versi data bersih baru langsung dari data mentah</strong>. Akibatnya, seluruh hasil perbaikan manual yang pernah diedit pada tabel data <strong>tidak akan terbawa</strong> ke versi baru ini.
+                    </p>
+                </div>
+
+                <div class="rounded-xl border border-line bg-slate-50 p-4">
+                    <div class="flex items-center gap-2 font-semibold text-ink mb-2">
+                        <svg class="h-4 w-4 shrink-0 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Yang tetap aman</span>
+                    </div>
+                    <ul class="space-y-1.5 text-xs text-slate-700">
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"></span>
+                            <span>Data mentah asli tetap utuh dan tersimpan aman.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"></span>
+                            <span>Catatan audit log mengenai siapa yang pernah mengedit tetap tersimpan di riwayat.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </x-konfirmasi-dialog>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof window['bukaDialog_dialogKonfirmasiTimpa'] === 'function') {
+                    window['bukaDialog_dialogKonfirmasiTimpa']();
+                }
+            });
+        </script>
+    @endif
 
     {{-- Tahap --}}
     <ol class="flex flex-wrap items-center gap-2 text-sm mb-6" aria-label="Tahap pengolahan">

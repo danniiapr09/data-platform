@@ -51,10 +51,43 @@ class AnalisisController extends Controller
             return redirect()->route('datasets.show', $id)->with('gagal', FastApi::OFFLINE);
         }
 
-        // hasil prediksi terakhir dipakai hanya kalau cocok dengan pilihan saat ini
+        // hasil prediksi: periksa session dulu, lalu fallback ke database backend
         $prediksi = session("prediksi.{$id}");
         if ($prediksi && (($prediksi['indikator'] ?? null) !== $nilai || ($prediksi['agg'] ?? null) !== $agg)) {
             $prediksi = null;
+        }
+
+        $prediksiTersimpanLain = null;
+
+        if (! $prediksi) {
+            $backendForecast = FastApi::forecast($id);
+            if ($backendForecast) {
+                $first = $backendForecast[0] ?? [];
+                $indikatorTersimpan = $first['indikator'] ?? null;
+
+                if ($indikatorTersimpan === $nilai) {
+                    $prediksi = [
+                        'indikator' => $indikatorTersimpan,
+                        'model_terbaik' => $first['model'] ?? 'unknown',
+                        'mae' => $first['mae'] ?? null,
+                        'mape' => $first['mape'] ?? null,
+                        'dibuat' => $first['dibuat'] ?? null,
+                        'dari_backend' => true,
+                        'prediksi' => array_map(fn ($r) => [
+                            'periode' => $r['periode'],
+                            'nilai' => $r['nilai_prediksi'],
+                            'bawah' => null,
+                            'atas' => null,
+                        ], $backendForecast),
+                    ];
+                } elseif ($indikatorTersimpan) {
+                    // Indikator tersimpan berbeda dengan nilai yang sedang dibuka
+                    $prediksiTersimpanLain = [
+                        'indikator' => $indikatorTersimpan,
+                        'dibuat' => $first['dibuat'] ?? null,
+                    ];
+                }
+            }
         }
 
         $grafik = null;
@@ -65,18 +98,23 @@ class AnalisisController extends Controller
             $aktual = array_map(fn ($t) => $t['nilai'], $titik);
             $bawah = $atas = $garis = array_fill(0, count($titik), null);
 
+            $adaKisaran = false;
             if ($prediksi && $titik) {
                 $n = count($titik);
-                $bawah[$n - 1] = $atas[$n - 1] = $garis[$n - 1] = $aktual[$n - 1];
+                $garis[$n - 1] = $aktual[$n - 1];
+                if (! empty($prediksi['prediksi'][0]['bawah']) || ! empty($prediksi['prediksi'][0]['atas'])) {
+                    $adaKisaran = true;
+                    $bawah[$n - 1] = $atas[$n - 1] = $aktual[$n - 1];
+                }
                 foreach ($prediksi['prediksi'] as $p) {
                     $labels[] = (string) $p['periode'];
                     $aktual[] = null;
                     $garis[] = $p['nilai'];
-                    $bawah[] = $p['bawah'];
-                    $atas[] = $p['atas'];
+                    $bawah[] = $p['bawah'] ?? null;
+                    $atas[] = $p['atas'] ?? null;
                 }
             }
-            $grafik = compact('labels', 'aktual', 'garis', 'bawah', 'atas');
+            $grafik = compact('labels', 'aktual', 'garis', 'bawah', 'atas', 'adaKisaran');
 
             if ($kelompok && ! empty($tren['per_kelompok'])) {
                 $labelAsli = array_map(fn ($t) => (string) $t['periode'], $titik);
@@ -108,6 +146,7 @@ class AnalisisController extends Controller
             'tren' => $tren,
             'galat' => $galat,
             'prediksi' => $prediksi,
+            'prediksiTersimpanLain' => $prediksiTersimpanLain,
             'grafik' => $grafik,
             'grafikKelompok' => $grafikKelompok,
         ]);

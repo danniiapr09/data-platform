@@ -9,97 +9,191 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        /*
+         * Catatan Identitas Visual:
+         * Palet warna dan emblem bersifat sementara sampai panduan logo dan warna resmi Pusdatin diterima.
+         * Semua shade brand-50 s.d. brand-900, paper, ink, dan line tetap dipertahankan agar kompatibel
+         * dengan seluruh halaman yang ada.
+         */
         tailwind.config = {
             theme: { extend: {
-                fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
+                fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'] },
                 colors: {
-                    brand: { 50: '#EDF5F2', 100: '#D3E8E1', 200: '#A8D0C4', 600: '#1E6B5C',
-                             700: '#165548', 800: '#0F3F36', 900: '#0A2B25' },
-                    paper: '#F5F7F6', ink: '#16231F', line: '#DBE3E0',
+                    brand: {
+                        50:  '#F0F7F4',
+                        100: '#DBEFE7',
+                        200: '#B8DFD1',
+                        300: '#89C7B4',
+                        400: '#5BAE96',
+                        500: '#34937B',
+                        600: '#1E6B5C', // Brand utama
+                        700: '#165548',
+                        800: '#104037',
+                        900: '#0B2C26',
+                    },
+                    paper: '#F8FAF9', // Kanvas lembut
+                    ink:   '#111827', // Teks utama kontras tinggi (WCAG AAA)
+                    line:  '#E2E8F0', // Border lembut
+                },
+                boxShadow: {
+                    'card':      '0 1px 3px 0 rgba(11,44,38,0.05), 0 1px 2px -1px rgba(11,44,38,0.05)',
+                    'card-hover':'0 4px 12px 0 rgba(11,44,38,0.10), 0 2px 4px -2px rgba(11,44,38,0.06)',
                 },
             } },
         };
     </script>
     <style>
-        *:focus-visible { outline: 2px solid #1E6B5C; outline-offset: 2px; border-radius: 4px; }
+        *:focus-visible { outline: 2px solid #1E6B5C; outline-offset: 2px; border-radius: 6px; }
+        dialog[open] {
+            animation: dialog-masuk 180ms ease-out forwards;
+        }
+        @keyframes dialog-masuk {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            dialog[open], .transisi-halus {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
     </style>
 </head>
-<body class="bg-paper text-ink font-sans antialiased">
+<body class="bg-paper text-ink font-sans antialiased selection:bg-brand-100 selection:text-brand-900">
 @php
     $nav = [
-        ['rute' => 'beranda', 'nama' => 'Beranda', 'aktif' => request()->routeIs('beranda'), 'ikon' => 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10'],
-        ['rute' => 'datasets.index', 'nama' => 'Dataset', 'aktif' => request()->is('datasets*'), 'ikon' => 'M4 6h16M4 12h16M4 18h10'],
+        [
+            'rute'  => 'beranda',
+            'nama'  => 'Beranda',
+            'aktif' => request()->routeIs('beranda'),
+            'ikon'  => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
+        ],
+        [
+            'rute'  => 'datasets.index',
+            'nama'  => 'Dataset',
+            'aktif' => request()->is('datasets*'),
+            'ikon'  => '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/>',
+        ],
     ];
 @endphp
 <div class="lg:flex min-h-screen">
 
-    {{-- Sidebar (desktop) --}}
-    <aside class="hidden lg:flex flex-col w-64 shrink-0 bg-brand-900 text-brand-100 p-6 sticky top-0 h-screen">
-        <div class="flex items-center gap-3 mb-10">
-            <span class="grid place-items-center h-10 w-10 rounded-xl bg-brand-600 text-white">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <rect x="4" y="12" width="3" height="7" rx="1"/>
-                    <rect x="10.5" y="7" width="3" height="12" rx="1"/>
-                    <rect x="17" y="3" width="3" height="16" rx="1"/>
+    {{-- Sidebar Desktop (Layar Lebar) --}}
+    <aside class="hidden lg:flex flex-col w-64 shrink-0 bg-brand-900 text-brand-100 p-5 sticky top-0 h-screen">
+        {{-- Emblem Netral Sementara --}}
+        <div class="flex items-center gap-3 mb-8 px-1">
+            <span class="grid place-items-center h-9 w-9 rounded-xl bg-brand-700 text-white shadow-sm ring-1 ring-white/15 shrink-0">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
                 </svg>
             </span>
-            <div>
-                <div class="font-bold text-white leading-tight">Platform Data</div>
-                <div class="text-xs text-brand-200">Pengolahan data instansi</div>
+            <div class="min-w-0">
+                <div class="font-bold text-white leading-tight truncate text-sm">Platform Data</div>
+                <div class="text-xs text-brand-300 truncate">Pusdatin</div>
             </div>
         </div>
 
-        <nav class="space-y-1 text-sm font-medium">
+        {{-- Navigasi Menu Utama --}}
+        <nav aria-label="Menu navigasi utama" class="flex-1 space-y-1 text-sm">
             @foreach ($nav as $n)
-                <a href="{{ route($n['rute']) }}" @if ($n['aktif']) aria-current="page" @endif
-                   class="flex items-center gap-3 rounded-lg px-3 py-2.5 {{ $n['aktif'] ? 'bg-brand-800 text-white' : 'hover:bg-brand-800/60' }}">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $n['ikon'] }}"/>
+                <a href="{{ route($n['rute']) }}"
+                   @if ($n['aktif']) aria-current="page" @endif
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors duration-150 {{ $n['aktif'] ? 'bg-white/10 text-white ring-1 ring-white/20 font-semibold' : 'text-brand-200 hover:bg-white/8 hover:text-white' }}">
+                    <svg class="h-5 w-5 shrink-0 {{ $n['aktif'] ? 'text-brand-300' : 'text-brand-400' }}"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        {!! $n['ikon'] !!}
                     </svg>
-                    {{ $n['nama'] }}
+                    <span>{{ $n['nama'] }}</span>
                 </a>
             @endforeach
         </nav>
+
+        {{-- Footer Sidebar --}}
+        <div class="pt-5 border-t border-white/10 text-xs text-brand-400 px-1">
+            Platform Pengolahan Data
+        </div>
     </aside>
 
-    {{-- Header (mobile) --}}
-    <header class="lg:hidden bg-brand-900 text-white">
-        <div class="flex items-center justify-between px-5 py-4">
-            <span class="font-bold">Platform Data</span>
-            <button type="button" id="menu-tombol" aria-expanded="false" aria-controls="menu-mobile" aria-label="Buka menu"
-                    class="rounded-lg p-2 hover:bg-brand-800">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+    {{-- Header & Drawer Mobile (Layar Kecil) --}}
+    <header class="lg:hidden bg-brand-900 text-white sticky top-0 z-40 shadow-sm">
+        <div class="flex items-center justify-between px-5 py-3.5">
+            <div class="flex items-center gap-2.5">
+                <span class="grid place-items-center h-8 w-8 rounded-lg bg-brand-700 text-white ring-1 ring-white/15 shrink-0">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                    </svg>
+                </span>
+                <span class="font-bold text-sm leading-tight">Platform Data Pusdatin</span>
+            </div>
+            <button type="button" id="menu-tombol" aria-expanded="false" aria-controls="menu-mobile" aria-label="Buka menu navigasi"
+                    class="rounded-xl p-2.5 text-brand-200 hover:bg-white/10 hover:text-white min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-white">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16"/>
                 </svg>
             </button>
         </div>
-        <nav id="menu-mobile" class="hidden border-t border-brand-800 px-3 py-2 text-sm font-medium">
+
+        {{-- Mobile Nav Drawer --}}
+        <nav id="menu-mobile" class="hidden border-t border-white/10 bg-brand-900 px-4 py-3 space-y-1 text-sm" aria-label="Navigasi seluler">
             @foreach ($nav as $n)
                 <a href="{{ route($n['rute']) }}"
-                   class="block rounded-lg px-3 py-2.5 {{ $n['aktif'] ? 'bg-brand-800' : 'hover:bg-brand-800/60' }}">{{ $n['nama'] }}</a>
+                   @if ($n['aktif']) aria-current="page" @endif
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 min-h-[40px] font-medium {{ $n['aktif'] ? 'bg-white/10 text-white font-semibold ring-1 ring-white/20' : 'text-brand-200 hover:bg-white/8 hover:text-white' }}">
+                    <svg class="h-5 w-5 shrink-0 {{ $n['aktif'] ? 'text-brand-300' : 'text-brand-400' }}"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        {!! $n['ikon'] !!}
+                    </svg>
+                    <span>{{ $n['nama'] }}</span>
+                </a>
             @endforeach
         </nav>
     </header>
+
     <script>
-        const tombolMenu = document.getElementById('menu-tombol');
-        tombolMenu.addEventListener('click', () => {
-            const buka = document.getElementById('menu-mobile').classList.toggle('hidden') === false;
-            tombolMenu.setAttribute('aria-expanded', buka);
-        });
+        (function() {
+            const tombolMenu = document.getElementById('menu-tombol');
+            const menuMobile = document.getElementById('menu-mobile');
+            if (!tombolMenu || !menuMobile) return;
+
+            function toggleMenu(buka) {
+                const isBuka = typeof buka === 'boolean' ? buka : menuMobile.classList.contains('hidden');
+                menuMobile.classList.toggle('hidden', !isBuka);
+                tombolMenu.setAttribute('aria-expanded', isBuka ? 'true' : 'false');
+                if (isBuka) {
+                    const firstLink = menuMobile.querySelector('a');
+                    if (firstLink) firstLink.focus();
+                } else {
+                    tombolMenu.focus();
+                }
+            }
+
+            tombolMenu.addEventListener('click', () => toggleMenu());
+
+            // Aksesibilitas keyboard: Tutup menu mobile dengan tombol Esc
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !menuMobile.classList.contains('hidden')) {
+                    toggleMenu(false);
+                }
+            });
+        })();
     </script>
 
-    <main class="flex-1 min-w-0">
+    {{-- Area Konten Utama --}}
+    <main class="flex-1 min-w-0 overflow-x-hidden">
         <div class="max-w-5xl mx-auto px-5 py-8 lg:px-10 lg:py-10">
 
+            {{-- Pesan Notifikasi Terpusat --}}
             @if (session('sukses'))
-                <div role="status" class="mb-6 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-                    {{ session('sukses') }}
-                </div>
+                <x-notifikasi tipe="sukses" :pesan="session('sukses')" class="mb-6" />
             @endif
             @if (session('gagal'))
-                <div role="alert" class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    {{ session('gagal') }}
-                </div>
+                <x-notifikasi tipe="gagal" :pesan="session('gagal')" class="mb-6" />
+            @endif
+            @if (session('peringatan'))
+                <x-notifikasi tipe="peringatan" :pesan="session('peringatan')" class="mb-6" />
+            @endif
+            @if (session('info'))
+                <x-notifikasi tipe="info" :pesan="session('info')" class="mb-6" />
             @endif
 
             @yield('content')

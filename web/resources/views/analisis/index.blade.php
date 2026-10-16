@@ -73,6 +73,22 @@
             <noscript><button class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Tampilkan</button></noscript>
         </form>
 
+        {{-- Banner jika ada prediksi tersimpan untuk indikator lain --}}
+        @if ($prediksiTersimpanLain)
+            <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+                <div>
+                    Tersedia prediksi tersimpan untuk data <strong>{{ $prediksiTersimpanLain['indikator'] }}</strong>
+                    @if (! empty($prediksiTersimpanLain['dibuat']))
+                        (dibuat {{ \Carbon\Carbon::parse($prediksiTersimpanLain['dibuat'])->locale('id')->isoFormat('D MMMM Y, HH:mm') }})
+                    @endif.
+                </div>
+                <a href="{{ route('analisis.index', ['id' => $id, 'nilai' => $prediksiTersimpanLain['indikator'], 'agg' => $agg]) }}"
+                   class="inline-block rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">
+                    Tampilkan prediksi tersimpan
+                </a>
+            </div>
+        @endif
+
         @if (count($kandidat) === 0)
             <div class="rounded-xl border border-line bg-white px-6 py-12 text-center text-slate-600">
                 Tidak ada kolom angka yang bisa dianalisis di dataset ini.
@@ -133,7 +149,23 @@
                 </form>
 
                 @if ($prediksi)
-                    @php $terbaik =$prediksi['evaluasi'][0] ?? []; @endphp
+                    @php
+                        $dariBackend = $prediksi['dari_backend'] ?? false;
+                        $adaKisaran = ! empty($grafik['adaKisaran']);
+                    @endphp
+
+                    @if ($dariBackend)
+                        <div class="mt-4 rounded-lg border border-line bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                            <p class="font-medium text-slate-800">Menampilkan prediksi tersimpan dari database</p>
+                            <p class="mt-1">
+                                Dibuat pada: <strong>{{ ! empty($prediksi['dibuat']) ? \Carbon\Carbon::parse($prediksi['dibuat'])->locale('id')->isoFormat('D MMMM Y, HH:mm') : '-' }}</strong>.
+                                Jika data diubah atau dibersihkan ulang sesudah tanggal ini, buat prediksi ulang.
+                            </p>
+                            <p class="mt-1 text-slate-500">
+                                Catatan: Jenis agregasi saat prediksi ini dibuat tidak tersimpan di database, sehingga nilainya bisa berbeda dengan grafik jika pilihan agregasi saat ini berbeda.
+                            </p>
+                        </div>
+                    @endif
 
                     <div class="mt-6 grid gap-6 lg:grid-cols-2">
                         <div>
@@ -144,7 +176,9 @@
                                         <tr>
                                             <th class="px-4 py-2 font-semibold">Periode</th>
                                             <th class="px-4 py-2 font-semibold text-right">Perkiraan</th>
-                                            <th class="px-4 py-2 font-semibold text-right">Kisaran</th>
+                                            @if ($adaKisaran)
+                                                <th class="px-4 py-2 font-semibold text-right">Kisaran</th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-line tabular-nums">
@@ -152,7 +186,11 @@
                                             <tr>
                                                 <td class="px-4 py-2">{{ $p['periode'] }}</td>
                                                 <td class="px-4 py-2 text-right font-semibold">{{ $fmt($p['nilai']) }}</td>
-                                                <td class="px-4 py-2 text-right text-slate-500">{{ $fmt($p['bawah']) }} sampai {{ $fmt($p['atas']) }}</td>
+                                                @if ($adaKisaran)
+                                                    <td class="px-4 py-2 text-right text-slate-500">
+                                                        {{ $p['bawah'] !== null ? $fmt($p['bawah']).' sampai '.$fmt($p['atas']) : '-' }}
+                                                    </td>
+                                                @endif
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -161,32 +199,53 @@
                         </div>
 
                         <div>
-                            <h3 class="mb-2 text-sm font-semibold">Perbandingan model</h3>
-                            <p class="mb-2 text-sm text-slate-600">
-                                Model terpilih: <strong class="font-semibold">{{ $namaModel[$prediksi['model_terbaik']] ?? $prediksi['model_terbaik'] }}</strong>,
-                                karena paling kecil kesalahannya pada {{ $prediksi['periode_uji'] }} periode terakhir.
-                            </p>
-                            <div class="overflow-hidden rounded-lg border border-line">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50 text-left text-slate-600">
-                                        <tr>
-                                            <th class="px-4 py-2 font-semibold">Model</th>
-                                            <th class="px-4 py-2 font-semibold text-right">MAE</th>
-                                            <th class="px-4 py-2 font-semibold text-right">MAPE</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-line tabular-nums">
-                                        @foreach ($prediksi['evaluasi'] as $e)
-                                            <tr class="{{ $loop->first ? 'bg-brand-50 font-semibold' : '' }}">
-                                                <td class="px-4 py-2">{{ $namaModel[$e['model']] ?? $e['model'] }}</td>
-                                                <td class="px-4 py-2 text-right">{{ $fmt($e['mae']) }}</td>
-                                                <td class="px-4 py-2 text-right">{{ $e['mape'] === null ? '-' : $fmt($e['mape']).'%' }}</td>
+                            <h3 class="mb-2 text-sm font-semibold">Model dan evaluasi</h3>
+                            @if (! empty($prediksi['evaluasi']))
+                                <p class="mb-2 text-sm text-slate-600">
+                                    Model terpilih: <strong class="font-semibold">{{ $namaModel[$prediksi['model_terbaik']] ?? $prediksi['model_terbaik'] }}</strong>,
+                                    karena paling kecil kesalahannya pada {{ $prediksi['periode_uji'] ?? 'beberapa' }} periode terakhir.
+                                </p>
+                                <div class="overflow-hidden rounded-lg border border-line">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-slate-50 text-left text-slate-600">
+                                            <tr>
+                                                <th class="px-4 py-2 font-semibold">Model</th>
+                                                <th class="px-4 py-2 font-semibold text-right">MAE</th>
+                                                <th class="px-4 py-2 font-semibold text-right">MAPE</th>
                                             </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p class="mt-2 text-xs text-slate-500">MAE dan MAPE mengukur selisih prediksi dengan data sebenarnya. Makin kecil, makin baik.</p>
+                                        </thead>
+                                        <tbody class="divide-y divide-line tabular-nums">
+                                            @foreach ($prediksi['evaluasi'] as $e)
+                                                <tr class="{{ $loop->first ? 'bg-brand-50 font-semibold' : '' }}">
+                                                    <td class="px-4 py-2">{{ $namaModel[$e['model']] ?? $e['model'] }}</td>
+                                                    <td class="px-4 py-2 text-right">{{ $fmt($e['mae']) }}</td>
+                                                    <td class="px-4 py-2 text-right">{{ $e['mape'] === null ? '-' : $fmt($e['mape']).'%' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-2 text-xs text-slate-500">MAE dan MAPE mengukur selisih prediksi dengan data sebenarnya. Makin kecil, makin baik.</p>
+                            @else
+                                <div class="rounded-lg border border-line p-4 text-sm text-slate-600">
+                                    <p class="mb-2">
+                                        Model terpilih: <strong class="font-semibold text-slate-800">{{ $namaModel[$prediksi['model_terbaik']] ?? ucwords(str_replace('_', ' ', $prediksi['model_terbaik'])) }}</strong>
+                                    </p>
+                                    <div class="flex gap-6 text-sm">
+                                        <div>
+                                            <span class="text-slate-500">MAE:</span>
+                                            <span class="font-semibold text-slate-800">{{ $prediksi['mae'] !== null ? $fmt($prediksi['mae']) : '-' }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500">MAPE:</span>
+                                            <span class="font-semibold text-slate-800">{{ $prediksi['mape'] !== null ? $fmt($prediksi['mape']).'%' : '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <p class="mt-3 text-xs text-slate-500">
+                                        Detail evaluasi perbandingan seluruh model dan rentang kisaran hanya muncul setelah prediksi dibuat ulang melalui tombol di atas.
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -235,16 +294,23 @@
                         },
                     });
                 } else {
+                    const datasets = [];
+                    if (g.adaKisaran) {
+                        datasets.push(
+                            { label: 'Batas bawah', data: g.bawah, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
+                            { label: 'Kisaran perkiraan', data: g.atas, borderColor: 'transparent', backgroundColor: 'rgba(30,107,92,0.14)', pointRadius: 0, fill: '-1' }
+                        );
+                    }
+                    datasets.push(
+                        { label: 'Data sebenarnya', data: g.aktual, borderColor: '#16231F', backgroundColor: '#16231F', tension: 0.25, pointRadius: 3 },
+                        { label: 'Prediksi', data: g.garis, borderColor: '#1E6B5C', backgroundColor: '#1E6B5C', borderDash: [6, 5], tension: 0.25, pointRadius: 3 }
+                    );
+
                     new Chart(document.getElementById('grafik'), {
                         type: 'line',
                         data: {
                             labels: g.labels,
-                            datasets: [
-                                { label: 'Batas bawah', data: g.bawah, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
-                                { label: 'Kisaran perkiraan', data: g.atas, borderColor: 'transparent', backgroundColor: 'rgba(30,107,92,0.14)', pointRadius: 0, fill: '-1' },
-                                { label: 'Data sebenarnya', data: g.aktual, borderColor: '#16231F', backgroundColor: '#16231F', tension: 0.25, pointRadius: 3 },
-                                { label: 'Prediksi', data: g.garis, borderColor: '#1E6B5C', backgroundColor: '#1E6B5C', borderDash: [6, 5], tension: 0.25, pointRadius: 3 },
-                            ],
+                            datasets: datasets,
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,

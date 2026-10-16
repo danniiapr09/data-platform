@@ -39,4 +39,19 @@ class FastApi
         $detail = $res->json('detail');
         return is_string($detail) ? $detail : $cadangan;
     }
+
+    /** Ambil hasil prediksi tersimpan dari backend (null jika belum ada atau offline). */
+    public static function forecast(int $id): ?array
+    {
+        try {
+            $res = self::http()->get("/datasets/{$id}/forecast");
+            if ($res->successful()) {
+                $data = $res->json();
+                return is_array($data) && count($data) > 0 ? $data : null;
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return null;
+        }
+        return null;
+    }
 }

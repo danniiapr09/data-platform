@@ -102,16 +102,27 @@ class DatasetController extends Controller
         ]);
     }
 
-    public function clean(int $id)
+    public function clean(Request $request, int $id)
     {
+        $timpa = $request->boolean('timpa');
+
         try {
-            $res = FastApi::http()->post("/datasets/{$id}/clean");
+            $param = $timpa ? ['timpa' => 'true'] : [];
+            $res = FastApi::http()->post("/datasets/{$id}/clean", $param);
         } catch (ConnectionException $e) {
             return back()->with('gagal', FastApi::OFFLINE);
         }
 
+        if ($res->status() === 409) {
+            return back()->with('konfirmasi_timpa', true);
+        }
+
+        if ($res->status() === 400) {
+            return back()->with('gagal', 'Dataset tidak memiliki data mentah untuk dibersihkan.');
+        }
+
         if ($res->failed()) {
-            return back()->with('gagal', FastApi::pesan($res, 'Data belum bisa dibersihkan.'));
+            return back()->with('gagal', FastApi::pesan($res, 'Data belum bisa dibersihkan. Silakan coba beberapa saat lagi.'));
         }
 
         return back()
