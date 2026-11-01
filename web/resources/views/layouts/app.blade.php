@@ -60,6 +60,9 @@
     </style>
 </head>
 <body class="bg-paper text-ink font-sans antialiased selection:bg-brand-100 selection:text-brand-900">
+<a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-700 focus:shadow-md focus:ring-2 focus:ring-brand-600">
+    Lewati ke konten utama
+</a>
 @php
     $nav = [
         [
@@ -179,7 +182,7 @@
     </script>
 
     {{-- Area Konten Utama --}}
-    <main class="flex-1 min-w-0 overflow-x-hidden">
+    <main id="main-content" class="flex-1 min-w-0 overflow-x-hidden">
         <div class="max-w-5xl mx-auto px-5 py-8 lg:px-10 lg:py-10">
 
             {{-- Pesan Notifikasi Terpusat --}}

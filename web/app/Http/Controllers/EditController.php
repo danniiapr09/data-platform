@@ -126,6 +126,16 @@ class EditController extends Controller
             return back()->withInput()->with('gagal', FastApi::pesan($res, 'Perubahan belum bisa disimpan. Periksa isiannya.'));
         }
 
-        return back()->with('sukses', count($perubahan).' nilai berhasil disimpan.');
+        $resData = $res->json() ?? [];
+        $peringatan = $resData['peringatan'] ?? [];
+        $pesanSukses = count($perubahan).' nilai berhasil disimpan.';
+
+        $redirect = back()->with('sukses', $pesanSukses);
+        if (! empty($peringatan)) {
+            $teksPeringatan = is_array($peringatan) ? implode(' ', $peringatan) : (string) $peringatan;
+            $redirect->with('peringatan_forecast', $teksPeringatan);
+        }
+
+        return $redirect;
     }
 }

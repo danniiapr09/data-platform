@@ -5,7 +5,7 @@
     @php
         $urut = ['uploaded' => 1, 'cleaned' => 2, 'forecasted' => 3];
         $n = $urut[$status] ?? 1;
-        $langkah = ['Diunggah', 'Dibersihkan', 'Diprediksi'];
+        $langkah = ['Baru diunggah', 'Sudah dibersihkan', 'Sudah diprediksi'];
     @endphp
 
     <nav class="text-sm text-slate-500 mb-4" aria-label="Navigasi halaman">
@@ -16,8 +16,18 @@
 
     <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-            <h1 class="text-2xl font-bold">{{ $nama }}</h1>
-            <p class="text-sm text-slate-500 mt-1">Dataset #{{ $id }}</p>
+            <h1 class="text-2xl font-bold text-ink">{{ $nama }}</h1>
+            <div class="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 mt-1">
+                <span>Dataset #{{ $id }}</span>
+                @if (! empty($dataset['baris_mentah']))
+                    <span aria-hidden="true">&bull;</span>
+                    <span>{{ number_format($dataset['baris_mentah'], 0, ',', '.') }} baris mentah</span>
+                @endif
+                @if (! empty($dataset['versi_bersih']))
+                    <span aria-hidden="true">&bull;</span>
+                    <span class="rounded bg-brand-50 border border-brand-200 px-2 py-0.5 text-brand-800 font-semibold">Versi bersih v{{ $dataset['versi_bersih'] }}</span>
+                @endif
+            </div>
         </div>
 
         @if ($bersih)
@@ -159,6 +169,20 @@
         </script>
     @endif
 
+    {{-- Konfirmasi Ringkas Setelah Unggah (A8) --}}
+    @if (session('info_unggah'))
+        <div class="mb-6 flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50/70 p-4 text-sm text-brand-900 shadow-card">
+            <span class="grid h-8 w-8 place-items-center rounded-xl bg-brand-600 text-white shrink-0">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </span>
+            <div>
+                <strong>File berhasil diproses:</strong> Terbaca {{ session('info_unggah')['jumlah_baris'] ?? count($rows) }} baris dan {{ session('info_unggah')['jumlah_kolom'] ?? count($columns) }} kolom data mentah.
+            </div>
+        </div>
+    @endif
+
     {{-- Tahap --}}
     <ol class="flex flex-wrap items-center gap-2 text-sm mb-6" aria-label="Tahap pengolahan">
         @foreach ($langkah as $i => $nm)
@@ -236,9 +260,4 @@
             <p class="px-5 py-10 text-center text-slate-600">Tidak ada baris yang bisa ditampilkan.</p>
         @endif
     </section>
-
-    <details class="mt-6 text-sm text-slate-500">
-        <summary class="cursor-pointer hover:text-ink">Lihat respons mentah dari layanan data</summary>
-        <pre class="mt-2 max-h-72 overflow-auto rounded-lg border border-line bg-white p-4 text-xs">{{ json_encode($mentah, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-    </details>
 @endsection

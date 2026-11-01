@@ -18,6 +18,7 @@ Route::post('/datasets/{id}/clean', [DatasetController::class, 'clean'])->name('
 
 Route::get('/datasets/{id}/anomali', [AnomaliController::class, 'index'])->name('anomali.index');
 Route::patch('/anomali/{anomali}', [AnomaliController::class, 'update'])->name('anomali.update');
+Route::post('/datasets/{id}/anomali/review-massal', [AnomaliController::class, 'reviewMassal'])->name('anomali.review-massal');
 Route::post('/datasets/{id}/terapkan-review', [AnomaliController::class, 'terapkan'])->name('anomali.terapkan');
 
 Route::get('/datasets/{id}/analisis', [AnalisisController::class, 'index'])->name('analisis.index');

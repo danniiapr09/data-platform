@@ -18,7 +18,11 @@ class BerandaController extends Controller
 
             // anomali yang menunggu review: cek 10 dataset terbaru yang sudah dibersihkan
             $sudahBersih = array_filter($datasets, fn ($d) => in_array($d['status'] ?? '', ['cleaned', 'forecasted']));
-            foreach (array_slice($sudahBersih, 0, 10) as $d) {
+            $totalSudahBersih = count($sudahBersih);
+            $sampelSudahBersih = array_slice($sudahBersih, 0, 10);
+            $jumlahDicek = count($sampelSudahBersih);
+
+            foreach ($sampelSudahBersih as $d) {
                 $did = $d['id'] ?? $d['dataset_id'] ?? 0;
                 $res = FastApi::http()->get("/datasets/{$did}/anomalies", ['status' => 'pending']);
                 $jumlah = $res->successful() ? count($res->json() ?? []) : 0;
@@ -41,6 +45,8 @@ class BerandaController extends Controller
             'total' => count($datasets),
             'hitung' => $hitung,
             'perluDitinjau' => $perluDitinjau,
+            'totalSudahBersih' => $totalSudahBersih ?? 0,
+            'jumlahDicek' => $jumlahDicek ?? 0,
             'offline' => $offline,
         ]);
     }

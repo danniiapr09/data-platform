@@ -29,7 +29,8 @@ class AnalisisController extends Controller
                 ->keys()->all();
 
             $nilai = $request->query('nilai', $kandidat[0] ?? null);
-            $agg = in_array($request->query('agg'), ['sum', 'mean'], true) ? $request->query('agg') : 'sum';
+            $aggPilihan = ['sum', 'mean', 'median', 'min', 'max'];
+            $agg = in_array($request->query('agg'), $aggPilihan, true) ? $request->query('agg') : 'sum';
             $kelompok = in_array($request->query('kelompok'), $kategori, true) ? $request->query('kelompok') : null;
 
             $tren = null;
@@ -58,35 +59,34 @@ class AnalisisController extends Controller
         }
 
         $prediksiTersimpanLain = null;
+        $backendForecast = FastApi::forecast($id);
+        $forecastTersimpanAktif = $backendForecast[0] ?? null;
 
-        if (! $prediksi) {
-            $backendForecast = FastApi::forecast($id);
-            if ($backendForecast) {
-                $first = $backendForecast[0] ?? [];
-                $indikatorTersimpan = $first['indikator'] ?? null;
+        if (! $prediksi && $backendForecast) {
+            $first = $backendForecast[0] ?? [];
+            $indikatorTersimpan = $first['indikator'] ?? null;
 
-                if ($indikatorTersimpan === $nilai) {
-                    $prediksi = [
-                        'indikator' => $indikatorTersimpan,
-                        'model_terbaik' => $first['model'] ?? 'unknown',
-                        'mae' => $first['mae'] ?? null,
-                        'mape' => $first['mape'] ?? null,
-                        'dibuat' => $first['dibuat'] ?? null,
-                        'dari_backend' => true,
-                        'prediksi' => array_map(fn ($r) => [
-                            'periode' => $r['periode'],
-                            'nilai' => $r['nilai_prediksi'],
-                            'bawah' => null,
-                            'atas' => null,
-                        ], $backendForecast),
-                    ];
-                } elseif ($indikatorTersimpan) {
-                    // Indikator tersimpan berbeda dengan nilai yang sedang dibuka
-                    $prediksiTersimpanLain = [
-                        'indikator' => $indikatorTersimpan,
-                        'dibuat' => $first['dibuat'] ?? null,
-                    ];
-                }
+            if ($indikatorTersimpan === $nilai) {
+                $prediksi = [
+                    'indikator' => $indikatorTersimpan,
+                    'model_terbaik' => $first['model'] ?? 'unknown',
+                    'mae' => $first['mae'] ?? null,
+                    'mape' => $first['mape'] ?? null,
+                    'dibuat' => $first['dibuat'] ?? null,
+                    'dari_backend' => true,
+                    'prediksi' => array_map(fn ($r) => [
+                        'periode' => $r['periode'],
+                        'nilai' => $r['nilai_prediksi'],
+                        'bawah' => null,
+                        'atas' => null,
+                    ], $backendForecast),
+                ];
+            } elseif ($indikatorTersimpan) {
+                // Indikator tersimpan berbeda dengan nilai yang sedang dibuka
+                $prediksiTersimpanLain = [
+                    'indikator' => $indikatorTersimpan,
+                    'dibuat' => $first['dibuat'] ?? null,
+                ];
             }
         }
 
@@ -147,6 +147,7 @@ class AnalisisController extends Controller
             'galat' => $galat,
             'prediksi' => $prediksi,
             'prediksiTersimpanLain' => $prediksiTersimpanLain,
+            'forecastTersimpanAktif' => $forecastTersimpanAktif,
             'grafik' => $grafik,
             'grafikKelompok' => $grafikKelompok,
         ]);
@@ -156,7 +157,7 @@ class AnalisisController extends Controller
     {
         $data = $request->validate([
             'nilai' => 'required|string',
-            'agg' => 'required|in:sum,mean',
+            'agg' => 'required|in:sum,mean,median,min,max',
             'kelompok' => 'nullable|string',
             'horizon' => 'required|integer|min:1|max:12',
         ], ['horizon.*' => 'Isi jumlah periode antara 1 dan 12.']);

@@ -58,7 +58,14 @@
 
 {{-- Bagian: Anomali perlu ditinjau --}}
 <section class="mb-8">
-    <h2 class="mb-3 text-base font-semibold text-ink">Perlu ditinjau</h2>
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-base font-semibold text-ink">Perlu ditinjau</h2>
+        @if (($totalSudahBersih ?? 0) > ($jumlahDicek ?? 0))
+            <span class="text-xs text-slate-500">
+                Menampilkan hasil dari {{ $jumlahDicek }} dari {{ $totalSudahBersih }} dataset yang sudah dibersihkan
+            </span>
+        @endif
+    </div>
     @if (count($perluDitinjau))
         <x-kartu padding="tanpa-padding">
             <ul class="divide-y divide-line" role="list">

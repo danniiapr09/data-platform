@@ -56,6 +56,9 @@
                         class="rounded-lg border border-line bg-white px-3 py-2 text-sm">
                     <option value="sum" @selected($agg === 'sum')>Total per periode</option>
                     <option value="mean" @selected($agg === 'mean')>Rata-rata per periode</option>
+                    <option value="median" @selected($agg === 'median')>Nilai tengah (median) per periode</option>
+                    <option value="min" @selected($agg === 'min')>Nilai terkecil (minimum) per periode</option>
+                    <option value="max" @selected($agg === 'max')>Nilai terbesar (maksimum) per periode</option>
                 </select>
             </div>
             @if (count($kategori))
@@ -123,27 +126,47 @@
             </section>
 
             {{-- Buat prediksi --}}
-            <section class="mt-6 rounded-xl border border-line bg-white p-5">
-                <h2 class="font-semibold">Prediksi</h2>
+            <section class="mt-6 rounded-2xl border border-line bg-white p-5 sm:p-6 shadow-card">
+                <h2 class="text-base font-bold text-ink">Prediksi</h2>
                 @if ($kelompok)
-                    <p class="mt-1 text-sm text-slate-600">Prediksi dibuat untuk total keseluruhan, bukan per {{ $kelompok }}.</p>
+                    <p class="mt-1 text-xs text-slate-500">Prediksi dibuat untuk total keseluruhan data, bukan dipisahkan per {{ $kelompok }}.</p>
                 @endif
+
+                {{-- Peringatan Prediksi Tersimpan (A6) --}}
+                @if ($forecastTersimpanAktif)
+                    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950 flex items-start gap-3">
+                        <svg class="h-5 w-5 text-amber-700 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <div>
+                            <div class="font-bold">Peringatan: Satu Prediksi Aktif per Dataset</div>
+                            <p class="mt-0.5 leading-relaxed">
+                                Sistem hanya menyimpan satu hasil prediksi aktif per dataset. Saat ini tersimpan prediksi untuk indikator <strong>{{ $forecastTersimpanAktif['indikator'] ?? '-' }}</strong>@if(!empty($forecastTersimpanAktif['dibuat'])) (dibuat {{ \Carbon\Carbon::parse($forecastTersimpanAktif['dibuat'])->locale('id')->isoFormat('D MMMM Y, HH:mm') }})@endif.
+                                Menjalankan prediksi baru akan <strong>menggantikan</strong> data ramalan yang tersimpan sebelumnya.
+                            </p>
+                            <p class="mt-1 text-amber-800 italic">
+                                Catatan: Metode hitungan (total/rata-rata/median) tidak disimpan di basis data server, sehingga grafik memadukan ramalan dengan rumus hitungan yang sedang Anda pilih.
+                            </p>
+                        </div>
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('analisis.prediksi', $id) }}"
                       onsubmit="const b=this.querySelector('button'); b.disabled=true; b.textContent='Membuat prediksi…';"
-                      class="mt-3 flex flex-wrap items-end gap-4">
+                      class="mt-4 flex flex-wrap items-end gap-4">
                     @csrf
                     <input type="hidden" name="nilai" value="{{ $nilai }}">
                     <input type="hidden" name="agg" value="{{ $agg }}">
                     <input type="hidden" name="kelompok" value="{{ $kelompok }}">
                     <div>
-                        <label for="horizon" class="mb-1 block text-sm font-medium">Perkirakan berapa periode ke depan</label>
+                        <label for="horizon" class="mb-1 block text-sm font-semibold text-ink">Jumlah periode ke depan</label>
                         <input id="horizon" name="horizon" type="number" min="1" max="12"
                                value="{{ old('horizon', $prediksi ? count($prediksi['prediksi']) : 3) }}"
-                               class="w-28 rounded-lg border border-line px-3 py-2 text-sm tabular-nums">
-                        @error('horizon') <p class="mt-1 text-sm text-red-700" role="alert">{{ $message }}</p> @enderror
+                               class="w-32 rounded-xl border border-line bg-white px-3.5 py-2 text-sm tabular-nums focus-visible:outline-brand-600">
+                        @error('horizon') <p class="mt-1 text-xs font-semibold text-red-600" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit"
-                            class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50">
+                            class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-brand-700 disabled:opacity-50">
                         {{ $prediksi ? 'Buat ulang prediksi' : 'Buat prediksi' }}
                     </button>
                 </form>
@@ -210,8 +233,8 @@
                                         <thead class="bg-slate-50 text-left text-slate-600">
                                             <tr>
                                                 <th class="px-4 py-2 font-semibold">Model</th>
-                                                <th class="px-4 py-2 font-semibold text-right">MAE</th>
-                                                <th class="px-4 py-2 font-semibold text-right">MAPE</th>
+                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Error">Rata-rata selisih</th>
+                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Percentage Error">Persentase selisih</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-line tabular-nums">
@@ -225,7 +248,7 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="mt-2 text-xs text-slate-500">MAE dan MAPE mengukur selisih prediksi dengan data sebenarnya. Makin kecil, makin baik.</p>
+                                <p class="mt-2 text-xs text-slate-500">Rata-rata selisih (MAE) dan persentase selisih (MAPE) mengukur penyimpangan hasil ramalan terhadap data asli. Semakin kecil nilainya, semakin akurat peramalannya.</p>
                             @else
                                 <div class="rounded-lg border border-line p-4 text-sm text-slate-600">
                                     <p class="mb-2">
@@ -233,11 +256,11 @@
                                     </p>
                                     <div class="flex gap-6 text-sm">
                                         <div>
-                                            <span class="text-slate-500">MAE:</span>
+                                            <span class="text-slate-500">Rata-rata selisih (MAE):</span>
                                             <span class="font-semibold text-slate-800">{{ $prediksi['mae'] !== null ? $fmt($prediksi['mae']) : '-' }}</span>
                                         </div>
                                         <div>
-                                            <span class="text-slate-500">MAPE:</span>
+                                            <span class="text-slate-500">Persentase selisih (MAPE):</span>
                                             <span class="font-semibold text-slate-800">{{ $prediksi['mape'] !== null ? $fmt($prediksi['mape']).'%' : '-' }}</span>
                                         </div>
                                     </div>

@@ -35,9 +35,8 @@
         </div>
     @else
         <div id="galat-js" role="alert" class="mb-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"></div>
-        <div id="info-grafik" role="alert" class="mb-4 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Pustaka grafik tidak berhasil dimuat, jadi diagram belum tampil. Kartu ringkasan, deskripsi, dan tabel tetap bisa dipakai.
-            Periksa berkas <code class="rounded bg-white px-1">web/public/js/chart.umd.js</code> (ukurannya harus lebih dari 100 KB), lalu muat ulang halaman.
+        <div id="info-grafik" role="alert" class="mb-4 hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Pustaka grafik tidak berhasil dimuat, sehingga diagram belum dapat ditampilkan. Kartu ringkasan, deskripsi, dan tabel tetap dapat digunakan. Silakan muat ulang halaman atau hubungi pengelola sistem.
         </div>
 
         {{-- Filter dari server --}}

@@ -6,9 +6,9 @@
 
 @php
     $teks = $label ?? match($status) {
-        'uploaded' => 'Diunggah',
-        'cleaned' => 'Dibersihkan',
-        'forecasted' => 'Diprediksi',
+        'uploaded' => 'Baru diunggah',
+        'cleaned' => 'Sudah dibersihkan',
+        'forecasted' => 'Sudah diprediksi',
         'pending' => 'Menunggu review',
         'diterima' => 'Diterima',
         'ditolak' => 'Ditolak',

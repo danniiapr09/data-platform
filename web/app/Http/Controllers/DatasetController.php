@@ -55,8 +55,17 @@ class DatasetController extends Controller
             ]);
         }
 
-        return redirect()->route('datasets.show', $res->json('dataset_id'))
-            ->with('sukses', 'Dataset berhasil diunggah.');
+        $resData = $res->json() ?? [];
+        $baris = $resData['jumlah_baris'] ?? null;
+        $kolom = $resData['jumlah_kolom'] ?? null;
+        $rincian = ($baris !== null && $kolom !== null) ? " ({$baris} baris, {$kolom} kolom)" : '';
+
+        return redirect()->route('datasets.show', $resData['dataset_id'] ?? $res->json('dataset_id'))
+            ->with('sukses', "Dataset berhasil diunggah{$rincian}.")
+            ->with('info_unggah', [
+                'jumlah_baris' => $baris,
+                'jumlah_kolom' => $kolom,
+            ]);
     }
 
     public function show(int $id)
@@ -92,6 +101,7 @@ class DatasetController extends Controller
 
         return view('datasets.show', [
             'id' => $id,
+            'dataset' => $dataset,
             'nama' => $dataset['nama'] ?? "Dataset #{$id}",
             'status' => $status,
             'bersih' => $bersih,

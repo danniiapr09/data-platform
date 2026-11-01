@@ -26,9 +26,18 @@ class FastApi
             ->all();
     }
 
-    /** Data satu dataset dari daftar dataset (nama, status, dll). */
+    /** Data satu dataset dari endpoint detail FastAPI (dengan fallback ke daftar). */
     public static function dataset(int $id): array
     {
+        try {
+            $res = self::http()->get("/datasets/{$id}");
+            if ($res->successful()) {
+                return $res->json() ?? [];
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // fallback
+        }
+
         return collect(self::daftar())
             ->first(fn ($d) => ($d['id'] ?? $d['dataset_id'] ?? null) == $id) ?? [];
     }

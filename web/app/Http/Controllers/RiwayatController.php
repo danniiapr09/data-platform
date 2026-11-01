@@ -43,11 +43,15 @@ class RiwayatController extends Controller
             $laporan = $j['laporan'] ?? $j;
         }
 
+        $forecast = FastApi::forecast($id);
+        $indikatorPrediksi = $forecast ? ($forecast[0]['indikator'] ?? null) : null;
+
         return view('riwayat.index', [
             'id' => $id,
             'dataset' => $dataset,
             'riwayat' => $riwayat,
             'laporan' => $laporan,
+            'indikatorPrediksi' => $indikatorPrediksi,
             'mentah' => $json,
         ]);
     }

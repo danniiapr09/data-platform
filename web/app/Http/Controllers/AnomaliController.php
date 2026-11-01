@@ -14,6 +14,9 @@ class AnomaliController extends Controller
         $grup = $request->query('grup');
         $filter = in_array($request->query('status'), ['pending', 'diterima', 'ditolak', 'diperbaiki'], true)
             ? $request->query('status') : null;
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = 50;
+        $offset = ($page - 1) * $limit;
         $catatan = null;
 
         try {
@@ -25,7 +28,24 @@ class AnomaliController extends Controller
                 $grup = null;
                 $sum = FastApi::http()->get("/datasets/{$id}/anomalies/summary", ['group_by' => 'jenis']);
             }
-            $res = FastApi::http()->get("/datasets/{$id}/anomalies/items", ['limit' => 200]);
+
+            // Teruskan filter ke backend dan terapkan paginasi (A1)
+            $itemParams = [
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+            if ($filter) {
+                $itemParams['status'] = $filter;
+            }
+            if ($grup) {
+                if ($by === 'jenis') {
+                    $itemParams['jenis'] = $grup;
+                } else {
+                    $itemParams['kolom'] = $grup;
+                }
+            }
+
+            $res = FastApi::http()->get("/datasets/{$id}/anomalies/items", $itemParams);
             if ($res->failed()) {
                 $res = FastApi::http()->get("/datasets/{$id}/anomalies/items");
             }
@@ -34,14 +54,9 @@ class AnomaliController extends Controller
         }
 
         $ringkasan = $sum->successful() ? $sum->json() : null;
-        $semua = $res->successful() ? ($res->json('data') ?? []) : [];
-        $totalServer = $res->successful() ? ($res->json('total') ?? count($semua)) : 0;
-
-        $items = collect($semua)
-            ->when($grup, fn ($c) => $c->filter(fn ($a) => ($a[$by] ?? null) === $grup))
-            ->when($filter, fn ($c) => $c->filter(fn ($a) => ($a['status'] ?? 'pending') === $filter))
-            ->values()
-            ->all();
+        $items = $res->successful() ? ($res->json('data') ?? []) : [];
+        $totalFiltered = $res->successful() ? ($res->json('total') ?? count($items)) : 0;
+        $totalPages = max(1, (int) ceil($totalFiltered / $limit));
 
         $hitung = ['pending' => 0, 'diterima' => 0, 'ditolak' => 0, 'diperbaiki' => 0];
         foreach (($ringkasan['per_status'] ?? []) as $s => $n) {
@@ -54,12 +69,15 @@ class AnomaliController extends Controller
             'ringkasan' => $ringkasan,
             'kelompokList' => $ringkasan['kelompok'] ?? [],
             'total' => $ringkasan['total'] ?? 0,
+            'totalFiltered' => $totalFiltered,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'limit' => $limit,
             'hitung' => $hitung,
             'by' => $by,
             'grup' => $grup,
             'filter' => $filter,
             'items' => $items,
-            'terpotong' => $totalServer > count($semua),
             'catatan' => $catatan,
         ]);
     }
@@ -82,17 +100,68 @@ class AnomaliController extends Controller
         return back();
     }
 
+    /**
+     * Review massal anomali (A3).
+     */
+    public function reviewMassal(Request $request, int $id)
+    {
+        $status = $request->validate([
+            'status' => 'required|in:diterima,ditolak,pending',
+            'jenis' => 'nullable|string',
+            'kolom' => 'nullable|string',
+            'semua' => 'nullable|boolean',
+        ])['status'];
+
+        $payload = [
+            'status' => $status,
+            'dari_status' => 'pending',
+        ];
+        if ($request->filled('jenis')) {
+            $payload['jenis'] = $request->input('jenis');
+        }
+        if ($request->filled('kolom')) {
+            $payload['kolom'] = $request->input('kolom');
+        }
+        if ($request->boolean('semua') || (empty($payload['jenis']) && empty($payload['kolom']))) {
+            $payload['semua'] = true;
+        }
+
+        try {
+            $res = FastApi::http()->post("/datasets/{$id}/anomalies/review", $payload);
+        } catch (ConnectionException $e) {
+            return back()->with('gagal', FastApi::OFFLINE);
+        }
+
+        if ($res->failed()) {
+            return back()->with('gagal', FastApi::pesan($res, 'Review massal belum bisa diproses.'));
+        }
+
+        $r = $res->json() ?? [];
+        $diubah = $r['jumlah_diubah'] ?? 0;
+        $statusTeks = match($status) {
+            'diterima' => 'diterima',
+            'ditolak' => 'ditolak',
+            default => 'menunggu review',
+        };
+
+        return back()->with('sukses', "{$diubah} anomali berhasil ditandai sebagai {$statusTeks}.");
+    }
+
+    /**
+     * Terapkan hasil review (A4).
+     */
     public function terapkan(int $id)
     {
+        if (! config('fitur.apply_review', false)) {
+            return back()->with('info', 'Fitur terapkan review sedang disiapkan.');
+        }
+
         try {
             $res = FastApi::http()->post("/datasets/{$id}/apply-review");
         } catch (ConnectionException $e) {
             return back()->with('gagal', FastApi::OFFLINE);
         }
 
-        if ($res->status() === 404 && $res->json('detail') === 'Not Found') {
-            return back()->with('gagal', 'Fitur terapkan review belum ada di layanan data. Minta tim backend menggabungkan endpoint apply-review.');
-        }
         if ($res->failed()) {
             return back()->with('gagal', FastApi::pesan($res, 'Hasil review belum bisa diterapkan.'));
         }
