@@ -21,9 +21,13 @@ def run_cleaning(dataset_id: int, timpa: bool = False, db: Session = Depends(get
         raise HTTPException(404, "Dataset tidak ditemukan.")
     sudah_diedit = db.scalar(select(func.count()).select_from(DataEdit)
                              .where(DataEdit.dataset_id == dataset_id))
-    if sudah_diedit and not timpa:
-        raise HTTPException(409, "Dataset ini sudah punya edit manual. Cleaning ulang membuat versi baru dari "
-                                 "data mentah dan membuang hasil edit tersebut. Tambahkan ?timpa=true jika memang diinginkan.")
+    sudah_review = db.scalar(select(func.count()).select_from(ProcessingLog)
+                             .where(ProcessingLog.dataset_id == dataset_id,
+                                    ProcessingLog.langkah == "apply_review"))
+    if (sudah_diedit or sudah_review) and not timpa:
+        raise HTTPException(409, "Dataset ini sudah punya edit manual atau review yang diterapkan. Cleaning ulang "
+                                 "membuat versi baru dari data mentah dan membuang hasil tersebut. "
+                                 "Tambahkan ?timpa=true jika memang diinginkan.")
     raw = db.scalars(select(RawData).where(RawData.dataset_id == dataset_id)
                      .order_by(RawData.row_index)).all()
     if not raw:
