@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Anomaly, CleanData, Dataset, Forecast, ProcessingLog, RawData
+from ..models import Anomaly, CleanData, DataEdit, Dataset, Forecast, ProcessingLog, RawData
 
 router = APIRouter(prefix="/datasets/{dataset_id}", tags=["reports"])
 
@@ -42,6 +42,11 @@ def dataset_detail(dataset_id: int, db: Session = Depends(get_db)):
                              .group_by(Anomaly.status)).all()
     forecast_count = db.scalar(select(func.count()).select_from(Forecast)
                                .where(Forecast.dataset_id == dataset_id))
+    jumlah_edit = db.scalar(select(func.count()).select_from(DataEdit)
+                            .where(DataEdit.dataset_id == dataset_id))
+    jumlah_review = db.scalar(select(func.count()).select_from(ProcessingLog)
+                              .where(ProcessingLog.dataset_id == dataset_id,
+                                     ProcessingLog.langkah == "apply_review"))
     return {
         "id": ds.id, "nama": ds.nama, "jenis": ds.jenis, "status": ds.status,
         "uploaded_at": ds.uploaded_at.isoformat(),
@@ -49,6 +54,9 @@ def dataset_detail(dataset_id: int, db: Session = Depends(get_db)):
         "versi_bersih": version, "baris_bersih": clean_count,
         "anomali": {s: n for s, n in status_rows},
         "ada_forecast": forecast_count > 0,
+        "jumlah_edit_manual": jumlah_edit,            # jumlah perubahan sel, bukan jumlah request
+        "jumlah_review_diterapkan": jumlah_review,    # berapa kali apply-review dijalankan
+        "cleaning_ulang_butuh_konfirmasi": bool(jumlah_edit or jumlah_review),  # true = POST /clean akan 409 tanpa ?timpa=true
     }
 
 
