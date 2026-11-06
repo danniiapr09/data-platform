@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import Anomaly, Forecast
 from .analysis import load_clean_df
+from .forecast import rapikan
 from .reports import get_clean_report, get_dataset_or_404
 
 router = APIRouter(prefix="/datasets/{dataset_id}/export", tags=["export"])
@@ -36,10 +37,14 @@ def _safe(df: pd.DataFrame) -> pd.DataFrame:
 def _forecast_df(db: Session, dataset_id: int) -> pd.DataFrame:
     rows = db.scalars(select(Forecast).where(Forecast.dataset_id == dataset_id)
                       .order_by(Forecast.id)).all()
-    return pd.DataFrame([{
-        "indikator": r.periode.split("|", 1)[0], "periode": r.periode.split("|", 1)[1],
-        "nilai_prediksi": r.nilai_prediksi, "model": r.model, "mae": r.mae, "mape": r.mape,
-    } for r in rows])
+    out = []
+    for r in rows:
+        indikator, periode = rapikan(r)
+        out.append({"indikator": indikator, "agg": r.agg, "periode": periode,
+                    "nilai_prediksi": r.nilai_prediksi,
+                    "batas_bawah": r.batas_bawah, "batas_atas": r.batas_atas,
+                    "model": r.model, "mae": r.mae, "mape": r.mape, "rmse": r.rmse})
+    return pd.DataFrame(out)
 
 
 def _autofit(ws):

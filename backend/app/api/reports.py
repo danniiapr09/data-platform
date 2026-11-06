@@ -74,7 +74,7 @@ def history(dataset_id: int, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     rows = db.scalars(select(ProcessingLog)
                       .where(ProcessingLog.dataset_id == dataset_id,
-                             ProcessingLog.langkah != "cleaning_report")
+                             ProcessingLog.langkah.not_in(("cleaning_report", "forecast_report")))
                       .order_by(ProcessingLog.id)).all()
     return [{"langkah": r.langkah, "ringkasan": r.ringkasan, "waktu": r.waktu.isoformat()}
             for r in rows]
