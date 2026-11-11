@@ -71,11 +71,16 @@ class Forecast(Base):
     __tablename__ = "forecasts"
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("datasets.id"), index=True)
+    indikator: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    agg: Mapped[str | None] = mapped_column(String(10), nullable=True)      # sum | mean | median | min | max
     model: Mapped[str] = mapped_column(String(50))
     periode: Mapped[str] = mapped_column(String(30))
     nilai_prediksi: Mapped[float] = mapped_column(Float)
+    batas_bawah: Mapped[float | None] = mapped_column(Float, nullable=True)
+    batas_atas: Mapped[float | None] = mapped_column(Float, nullable=True)
     mae: Mapped[float | None] = mapped_column(Float, nullable=True)
     mape: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rmse: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
 
 
