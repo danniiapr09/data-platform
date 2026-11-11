@@ -59,33 +59,76 @@ class AnalisisController extends Controller
         }
 
         $prediksiTersimpanLain = null;
+        $laporan = FastApi::forecastLaporan($id);
         $backendForecast = FastApi::forecast($id);
-        $forecastTersimpanAktif = $backendForecast[0] ?? null;
 
-        if (! $prediksi && $backendForecast) {
+        $forecastTersimpanAktif = null;
+        if ($laporan) {
+            $forecastTersimpanAktif = [
+                'indikator' => $laporan['indikator'] ?? null,
+                'agg' => $laporan['agg'] ?? null,
+                'dibuat' => $laporan['dibuat'] ?? null,
+            ];
+        } elseif ($backendForecast) {
             $first = $backendForecast[0] ?? [];
-            $indikatorTersimpan = $first['indikator'] ?? null;
+            $forecastTersimpanAktif = [
+                'indikator' => $first['indikator'] ?? null,
+                'agg' => $first['agg'] ?? null,
+                'dibuat' => $first['dibuat'] ?? null,
+            ];
+        }
+
+        if (! $prediksi && ($laporan || $backendForecast)) {
+            $indikatorTersimpan = $forecastTersimpanAktif['indikator'] ?? null;
+            $aggTersimpan = $forecastTersimpanAktif['agg'] ?? null;
 
             if ($indikatorTersimpan === $nilai) {
-                $prediksi = [
-                    'indikator' => $indikatorTersimpan,
-                    'model_terbaik' => $first['model'] ?? 'unknown',
-                    'mae' => $first['mae'] ?? null,
-                    'mape' => $first['mape'] ?? null,
-                    'dibuat' => $first['dibuat'] ?? null,
-                    'dari_backend' => true,
-                    'prediksi' => array_map(fn ($r) => [
-                        'periode' => $r['periode'],
-                        'nilai' => $r['nilai_prediksi'],
-                        'bawah' => null,
-                        'atas' => null,
-                    ], $backendForecast),
-                ];
+                if ($laporan) {
+                    $prediksi = [
+                        'indikator' => $indikatorTersimpan,
+                        'agg' => $aggTersimpan,
+                        'model_terbaik' => $laporan['model_terbaik'] ?? ($backendForecast[0]['model'] ?? 'unknown'),
+                        'mae' => $laporan['evaluasi'][0]['mae'] ?? ($backendForecast[0]['mae'] ?? null),
+                        'mape' => $laporan['evaluasi'][0]['mape'] ?? ($backendForecast[0]['mape'] ?? null),
+                        'rmse' => $laporan['evaluasi'][0]['rmse'] ?? ($backendForecast[0]['rmse'] ?? null),
+                        'dibuat' => $laporan['dibuat'] ?? null,
+                        'dari_backend' => true,
+                        'lengkap' => $laporan['lengkap'] ?? true,
+                        'periode_uji' => $laporan['periode_uji'] ?? null,
+                        'evaluasi' => $laporan['evaluasi'] ?? [],
+                        'catatan' => $laporan['catatan'] ?? [],
+                        'prediksi' => array_map(fn ($r) => [
+                            'periode' => (string) $r['periode'],
+                            'nilai' => $r['nilai'],
+                            'bawah' => $r['bawah'] ?? null,
+                            'atas' => $r['atas'] ?? null,
+                        ], $laporan['prediksi'] ?? []),
+                    ];
+                } else {
+                    $first = $backendForecast[0] ?? [];
+                    $prediksi = [
+                        'indikator' => $indikatorTersimpan,
+                        'agg' => $aggTersimpan,
+                        'model_terbaik' => $first['model'] ?? 'unknown',
+                        'mae' => $first['mae'] ?? null,
+                        'mape' => $first['mape'] ?? null,
+                        'rmse' => $first['rmse'] ?? null,
+                        'dibuat' => $first['dibuat'] ?? null,
+                        'dari_backend' => true,
+                        'prediksi' => array_map(fn ($r) => [
+                            'periode' => (string) $r['periode'],
+                            'nilai' => $r['nilai_prediksi'],
+                            'bawah' => $r['batas_bawah'] ?? null,
+                            'atas' => $r['batas_atas'] ?? null,
+                        ], $backendForecast),
+                    ];
+                }
             } elseif ($indikatorTersimpan) {
                 // Indikator tersimpan berbeda dengan nilai yang sedang dibuka
                 $prediksiTersimpanLain = [
                     'indikator' => $indikatorTersimpan,
-                    'dibuat' => $first['dibuat'] ?? null,
+                    'agg' => $aggTersimpan,
+                    'dibuat' => $forecastTersimpanAktif['dibuat'] ?? null,
                 ];
             }
         }

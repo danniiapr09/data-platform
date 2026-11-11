@@ -63,4 +63,33 @@ class FastApi
         }
         return null;
     }
+
+    /** Ambil laporan lengkap hasil prediksi tersimpan dari backend (null jika belum ada atau offline). */
+    public static function forecastLaporan(int $id): ?array
+    {
+        try {
+            $res = self::http()->get("/datasets/{$id}/forecast/laporan");
+            if ($res->successful()) {
+                $data = $res->json();
+                return is_array($data) ? $data : null;
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return null;
+        }
+        return null;
+    }
+
+    /** Angka ringkasan beranda dari FastAPI (jumlah dataset per status, total anomali pending, 5 dataset teratas). */
+    public static function ringkasan(): array
+    {
+        try {
+            $res = self::http()->get('/ringkasan');
+            if ($res->successful()) {
+                return $res->json() ?? [];
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return [];
+        }
+        return [];
+    }
 }

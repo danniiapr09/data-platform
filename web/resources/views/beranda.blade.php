@@ -60,9 +60,9 @@
 <section class="mb-8">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="text-base font-semibold text-ink">Perlu ditinjau</h2>
-        @if (($totalSudahBersih ?? 0) > ($jumlahDicek ?? 0))
+        @if (! empty($totalAnomaliPending))
             <span class="text-xs text-slate-500">
-                Menampilkan hasil dari {{ $jumlahDicek }} dari {{ $totalSudahBersih }} dataset yang sudah dibersihkan
+                Total {{ number_format($totalAnomaliPending, 0, ',', '.') }} anomali menunggu review
             </span>
         @endif
     </div>

@@ -128,11 +128,11 @@
                 <div class="flex flex-wrap items-end justify-between gap-4 border-t border-line bg-slate-50/40 p-5 sm:p-6">
                     <div class="min-w-64 flex-1">
                         <label for="alasan" class="mb-1 block text-sm font-semibold text-ink">
-                            Alasan perubahan data <span class="text-red-600 font-bold">*</span>
+                            Alasan perubahan data <span class="text-red-600 font-bold">* (Wajib diisi)</span>
                         </label>
-                        <input id="alasan" name="alasan" type="text" maxlength="200" required
-                               value="{{ old('alasan', 'Melengkapi data yang kosong') }}"
-                               placeholder="Contoh: Mengisi dari laporan resmi Dinas Pendidikan"
+                        <input id="alasan" name="alasan" type="text" minlength="5" maxlength="500" required
+                               value="{{ old('alasan') }}"
+                               placeholder="Contoh: Perbaikan berdasarkan konfirmasi berkas dinas (minimal 5 karakter)"
                                class="w-full rounded-xl border border-line bg-white px-3.5 py-2 text-sm focus-visible:outline-brand-600">
                         @error('alasan') <p class="mt-1 text-xs font-semibold text-red-600" role="alert">{{ $message }}</p> @enderror
                         <p class="mt-1.5 text-xs text-slate-500">Tulis angka tanpa titik pemisah ribuan. Baris yang dibiarkan kosong tidak akan diubah.</p>

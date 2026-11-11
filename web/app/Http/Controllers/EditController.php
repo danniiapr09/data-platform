@@ -87,13 +87,15 @@ class EditController extends Controller
     public function simpan(Request $request, int $id)
     {
         $data = $request->validate([
-            'alasan' => 'required|string|max:200',
+            'alasan' => 'required|string|min:5|max:500',
             'edit' => 'required|array',
             'edit.*.row_index' => 'required|integer|min:0',
             'edit.*.kolom' => 'required|string|max:100',
             'edit.*.nilai' => 'nullable|string|max:100',
         ], [
-            'alasan.required' => 'Tulis alasan perubahan supaya riwayatnya jelas.',
+            'alasan.required' => 'Alasan perubahan wajib diisi.',
+            'alasan.min' => 'Alasan perubahan minimal 5 karakter, misalnya sumber data atau nomor dokumen.',
+            'alasan.max' => 'Alasan perubahan maksimal 500 karakter.',
             'edit.required' => 'Tidak ada isian yang dikirim.',
         ]);
 

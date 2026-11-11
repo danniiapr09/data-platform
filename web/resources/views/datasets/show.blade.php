@@ -27,6 +27,11 @@
                     <span aria-hidden="true">&bull;</span>
                     <span class="rounded bg-brand-50 border border-brand-200 px-2 py-0.5 text-brand-800 font-semibold">Versi bersih v{{ $dataset['versi_bersih'] }}</span>
                 @endif
+                @if (! empty($dataset['anomali']) && is_array($dataset['anomali']))
+                    @php $anom = $dataset['anomali']; @endphp
+                    <span aria-hidden="true">&bull;</span>
+                    <span>Anomali: {{ $anom['pending'] ?? 0 }} menunggu, {{ $anom['diterima'] ?? 0 }} diterima, {{ $anom['ditolak'] ?? 0 }} ditolak, {{ $anom['diperbaiki'] ?? 0 }} diperbaiki</span>
+                @endif
             </div>
         </div>
 
@@ -50,40 +55,70 @@
         @endif
     </div>
 
-    {{-- DIALOG A: Konfirmasi Bersihkan Ulang Biasa --}}
+    {{-- DIALOG A: Konfirmasi Bersihkan Ulang (Memeriksa flag cleaning_ulang_butuh_konfirmasi) --}}
     @if ($bersih)
+        @php
+            $butuhKonfirmasi = ! empty($dataset['cleaning_ulang_butuh_konfirmasi']);
+            $jmlEdit = (int) ($dataset['jumlah_edit_manual'] ?? 0);
+            $jmlReview = (int) ($dataset['jumlah_review_diterapkan'] ?? 0);
+        @endphp
+
         <x-konfirmasi-dialog
             id="dialogBersihkanUlang"
-            judul="Bersihkan ulang dataset ini?"
-            deskripsi="Sistem akan menjalankan ulang aturan pembersihan mulai dari data mentah asli."
-            varian="amber"
-            teksKonfirmasi="Ya, bersihkan ulang"
+            :judul="$butuhKonfirmasi ? 'Bersihkan ulang dan timpa perubahan?' : 'Bersihkan ulang dataset ini?'"
+            :deskripsi="$butuhKonfirmasi ? 'Pembersihan ulang akan menimpa seluruh perbaikan manual dan review yang telah diterapkan.' : 'Sistem akan menjalankan ulang aturan pembersihan mulai dari data mentah asli.'"
+            :varian="$butuhKonfirmasi ? 'merah' : 'amber'"
+            :teksKonfirmasi="$butuhKonfirmasi ? 'Ya, bersihkan ulang dan timpa' : 'Ya, bersihkan ulang'"
             teksBatal="Batal"
             :action="route('datasets.clean', $id)">
+            @if ($butuhKonfirmasi)
+                <x-slot:hiddenFields>
+                    <input type="hidden" name="timpa" value="1">
+                </x-slot:hiddenFields>
+            @endif
+
             <div class="space-y-4">
-                {{-- Kelompok: Yang akan berubah --}}
-                <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
-                    <div class="flex items-center gap-2 font-semibold text-amber-900 mb-2">
-                        <svg class="h-4 w-4 shrink-0 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                        <span>Yang akan diperbarui</span>
+                @if ($butuhKonfirmasi)
+                    {{-- Peringatan kehilangan edit manual dan review yang diterapkan --}}
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+                        <div class="flex items-center gap-2 font-semibold text-red-900 mb-2">
+                            <svg class="h-4 w-4 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>Peringatan perubahan yang akan hilang</span>
+                        </div>
+                        <p class="text-xs leading-relaxed text-red-900 mb-2">
+                            Dataset ini tercatat memiliki <strong>{{ $jmlEdit }} perubahan edit manual</strong> dan <strong>{{ $jmlReview }} kali penerapan review</strong>.
+                        </p>
+                        <p class="text-xs leading-relaxed text-red-900">
+                            Pembersihan ulang akan membentuk <strong>versi data bersih baru langsung dari data mentah asli</strong>. Seluruh perbaikan manual ({{ $jmlEdit }} perubahan) serta hasil review yang telah diterapkan ({{ $jmlReview }} kali) <strong>akan hilang</strong> dan tidak terbawa ke versi baru.
+                        </p>
                     </div>
-                    <ul class="space-y-2 text-xs leading-relaxed text-amber-950">
-                        <li class="flex items-start gap-2">
-                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
-                            <span>Daftar anomali dan status tinjauan (diterima/ditolak) akan <strong>dihapus dan dideteksi ulang</strong> dari awal.</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
-                            <span>Hasil pembersihan akan disimpan sebagai <strong>versi data bersih baru</strong>.</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
-                            <span>Prediksi yang sudah dibuat tidak otomatis diperbarui, sehingga perlu dibuat ulang bila diinginkan.</span>
-                        </li>
-                    </ul>
-                </div>
+                @else
+                    {{-- Kelompok: Yang akan berubah --}}
+                    <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                        <div class="flex items-center gap-2 font-semibold text-amber-900 mb-2">
+                            <svg class="h-4 w-4 shrink-0 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>Yang akan diperbarui</span>
+                        </div>
+                        <ul class="space-y-2 text-xs leading-relaxed text-amber-950">
+                            <li class="flex items-start gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                <span>Daftar anomali dan status tinjauan (diterima/ditolak) akan <strong>dihapus dan dideteksi ulang</strong> dari awal.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                <span>Hasil pembersihan akan disimpan sebagai <strong>versi data bersih baru</strong>.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                <span>Prediksi yang sudah dibuat tidak otomatis diperbarui, sehingga perlu dibuat ulang bila diinginkan.</span>
+                            </li>
+                        </ul>
+                    </div>
+                @endif
 
                 {{-- Kelompok: Yang tetap aman --}}
                 <div class="rounded-xl border border-line bg-slate-50 p-4">
@@ -104,10 +139,6 @@
                         </li>
                     </ul>
                 </div>
-
-                <p class="text-xs text-slate-500 italic">
-                    Catatan: Jika dataset ini memiliki perbaikan data manual, Anda akan dimintai persetujuan khusus sebelum data ditimpa.
-                </p>
             </div>
         </x-konfirmasi-dialog>
     @endif

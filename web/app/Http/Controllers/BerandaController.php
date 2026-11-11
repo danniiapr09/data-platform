@@ -10,43 +10,47 @@ class BerandaController extends Controller
     public function index()
     {
         $datasets = [];
-        $perluDitinjau = [];
+        $ringkasan = [];
         $offline = false;
 
         try {
             $datasets = FastApi::daftar();
-
-            // anomali yang menunggu review: cek 10 dataset terbaru yang sudah dibersihkan
-            $sudahBersih = array_filter($datasets, fn ($d) => in_array($d['status'] ?? '', ['cleaned', 'forecasted']));
-            $totalSudahBersih = count($sudahBersih);
-            $sampelSudahBersih = array_slice($sudahBersih, 0, 10);
-            $jumlahDicek = count($sampelSudahBersih);
-
-            foreach ($sampelSudahBersih as $d) {
-                $did = $d['id'] ?? $d['dataset_id'] ?? 0;
-                $res = FastApi::http()->get("/datasets/{$did}/anomalies", ['status' => 'pending']);
-                $jumlah = $res->successful() ? count($res->json() ?? []) : 0;
-                if ($jumlah > 0) {
-                    $perluDitinjau[] = ['id' => $did, 'nama' => $d['nama'] ?? "Dataset #{$did}", 'jumlah' => $jumlah];
-                }
-            }
+            $ringkasan = FastApi::ringkasan();
         } catch (ConnectionException $e) {
             $offline = true;
         }
 
-        $urut = ['uploaded' => 1, 'cleaned' => 2, 'forecasted' => 3];
-        $hitung = [1 => 0, 2 => 0, 3 => 0];
-        foreach ($datasets as $d) {
-            $hitung[$urut[$d['status'] ?? 'uploaded'] ?? 1]++;
+        $perStatus = $ringkasan['per_status'] ?? [];
+        $hitung = [
+            1 => $perStatus['uploaded'] ?? 0,
+            2 => $perStatus['cleaned'] ?? 0,
+            3 => $perStatus['forecasted'] ?? 0,
+        ];
+
+        // Fallback hitung manual jika ringkasan kosong
+        if (empty($perStatus)) {
+            $urut = ['uploaded' => 1, 'cleaned' => 2, 'forecasted' => 3];
+            foreach ($datasets as $d) {
+                $hitung[$urut[$d['status'] ?? 'uploaded'] ?? 1]++;
+            }
         }
+
+        $pendingTeratas = $ringkasan['pending_teratas'] ?? [];
+        $perluDitinjau = array_map(fn ($p) => [
+            'id' => $p['dataset_id'],
+            'nama' => $p['nama'],
+            'jumlah' => $p['pending'],
+        ], $pendingTeratas);
+
+        $total = $ringkasan['jumlah_dataset'] ?? count($datasets);
+        $totalAnomaliPending = $ringkasan['anomali_pending'] ?? array_sum(array_column($perluDitinjau, 'jumlah'));
 
         return view('beranda', [
             'terbaru' => array_slice($datasets, 0, 5),
-            'total' => count($datasets),
+            'total' => $total,
             'hitung' => $hitung,
             'perluDitinjau' => $perluDitinjau,
-            'totalSudahBersih' => $totalSudahBersih ?? 0,
-            'jumlahDicek' => $jumlahDicek ?? 0,
+            'totalAnomaliPending' => $totalAnomaliPending,
             'offline' => $offline,
         ]);
     }

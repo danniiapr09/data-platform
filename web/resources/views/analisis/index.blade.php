@@ -29,12 +29,20 @@
         </div>
     @else
         @php
-            $fmt = fn ($v) =>$v === null ? '-' : number_format($v, abs($v) >= 100 ? 0 : 2, ',', '.');
-            $arah = ['naik' => 'naik', 'turun' => 'turun', 'stabil' => 'stabil', 'data kurang' => 'belum cukup data untuk dinilai'];$namaModel = [
+            $fmt = fn ($v) => $v === null ? '-' : number_format($v, abs($v) >= 100 ? 0 : 2, ',', '.');
+            $arah = ['naik' => 'naik', 'turun' => 'turun', 'stabil' => 'stabil', 'data kurang' => 'belum cukup data untuk dinilai'];
+            $namaModel = [
                 'naive' => 'Nilai terakhir (naive)',
                 'moving_average' => 'Rata-rata bergerak',
                 'drift' => 'Drift',
                 'linear_trend' => 'Tren linear',
+            ];
+            $namaAgg = [
+                'sum' => 'Total (sum)',
+                'mean' => 'Rata-rata (mean)',
+                'median' => 'Median',
+                'min' => 'Nilai minimum (min)',
+                'max' => 'Nilai maksimum (max)',
             ];
         @endphp
 
@@ -144,9 +152,15 @@
                                 Sistem hanya menyimpan satu hasil prediksi aktif per dataset. Saat ini tersimpan prediksi untuk indikator <strong>{{ $forecastTersimpanAktif['indikator'] ?? '-' }}</strong>@if(!empty($forecastTersimpanAktif['dibuat'])) (dibuat {{ \Carbon\Carbon::parse($forecastTersimpanAktif['dibuat'])->locale('id')->isoFormat('D MMMM Y, HH:mm') }})@endif.
                                 Menjalankan prediksi baru akan <strong>menggantikan</strong> data ramalan yang tersimpan sebelumnya.
                             </p>
-                            <p class="mt-1 text-amber-800 italic">
-                                Catatan: Metode hitungan (total/rata-rata/median) tidak disimpan di basis data server, sehingga grafik memadukan ramalan dengan rumus hitungan yang sedang Anda pilih.
-                            </p>
+                            @if (! empty($forecastTersimpanAktif['agg']))
+                                <p class="mt-1 text-amber-900">
+                                    Metode agregasi tersimpan: <strong>{{ $namaAgg[$forecastTersimpanAktif['agg']] ?? $forecastTersimpanAktif['agg'] }}</strong>.
+                                </p>
+                            @else
+                                <p class="mt-1 text-amber-800 italic">
+                                    Metode agregasi: - (agregasi tidak tersimpan pada data prediksi lama, sehingga grafik memadukan ramalan dengan rumus hitungan yang sedang Anda pilih).
+                                </p>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -179,14 +193,20 @@
 
                     @if ($dariBackend)
                         <div class="mt-4 rounded-lg border border-line bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                            <p class="font-medium text-slate-800">Menampilkan prediksi tersimpan dari database</p>
+                            <p class="font-medium text-slate-800">Menampilkan hasil prediksi lengkap dari laporan tersimpan</p>
                             <p class="mt-1">
                                 Dibuat pada: <strong>{{ ! empty($prediksi['dibuat']) ? \Carbon\Carbon::parse($prediksi['dibuat'])->locale('id')->isoFormat('D MMMM Y, HH:mm') : '-' }}</strong>.
                                 Jika data diubah atau dibersihkan ulang sesudah tanggal ini, buat prediksi ulang.
                             </p>
-                            <p class="mt-1 text-slate-500">
-                                Catatan: Jenis agregasi saat prediksi ini dibuat tidak tersimpan di database, sehingga nilainya bisa berbeda dengan grafik jika pilihan agregasi saat ini berbeda.
-                            </p>
+                            @if (! empty($prediksi['agg']))
+                                <p class="mt-1 text-slate-700">
+                                    Metode agregasi yang digunakan: <strong>{{ $namaAgg[$prediksi['agg']] ?? $prediksi['agg'] }}</strong>.
+                                </p>
+                            @else
+                                <p class="mt-1 text-slate-500 italic">
+                                    Metode agregasi: - (agregasi tidak tersimpan pada data prediksi lama).
+                                </p>
+                            @endif
                         </div>
                     @endif
 
@@ -207,11 +227,11 @@
                                     <tbody class="divide-y divide-line tabular-nums">
                                         @foreach ($prediksi['prediksi'] as $p)
                                             <tr>
-                                                <td class="px-4 py-2">{{ $p['periode'] }}</td>
-                                                <td class="px-4 py-2 text-right font-semibold">{{ $fmt($p['nilai']) }}</td>
+                                                <td class="px-4 py-2">{{ (string) $p['periode'] }}</td>
+                                                <td class="px-4 py-2 text-right font-semibold">{{ $p['nilai'] !== null ? $fmt($p['nilai']) : '-' }}</td>
                                                 @if ($adaKisaran)
                                                     <td class="px-4 py-2 text-right text-slate-500">
-                                                        {{ $p['bawah'] !== null ? $fmt($p['bawah']).' sampai '.$fmt($p['atas']) : '-' }}
+                                                        {{ ($p['bawah'] !== null && $p['atas'] !== null) ? $fmt($p['bawah']).' sampai '.$fmt($p['atas']) : '-' }}
                                                     </td>
                                                 @endif
                                             </tr>
@@ -233,28 +253,30 @@
                                         <thead class="bg-slate-50 text-left text-slate-600">
                                             <tr>
                                                 <th class="px-4 py-2 font-semibold">Model</th>
-                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Error">Rata-rata selisih</th>
-                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Percentage Error">Persentase selisih</th>
+                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Error">Rata-rata selisih (MAE)</th>
+                                                <th class="px-4 py-2 font-semibold text-right" title="Mean Absolute Percentage Error">Persentase selisih (MAPE)</th>
+                                                <th class="px-4 py-2 font-semibold text-right" title="Root Mean Squared Error">RMSE</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-line tabular-nums">
                                             @foreach ($prediksi['evaluasi'] as $e)
                                                 <tr class="{{ $loop->first ? 'bg-brand-50 font-semibold' : '' }}">
                                                     <td class="px-4 py-2">{{ $namaModel[$e['model']] ?? $e['model'] }}</td>
-                                                    <td class="px-4 py-2 text-right">{{ $fmt($e['mae']) }}</td>
+                                                    <td class="px-4 py-2 text-right">{{ $e['mae'] !== null ? $fmt($e['mae']) : '-' }}</td>
                                                     <td class="px-4 py-2 text-right">{{ $e['mape'] === null ? '-' : $fmt($e['mape']).'%' }}</td>
+                                                    <td class="px-4 py-2 text-right">{{ ($e['rmse'] ?? null) !== null ? $fmt($e['rmse']) : '-' }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="mt-2 text-xs text-slate-500">Rata-rata selisih (MAE) dan persentase selisih (MAPE) mengukur penyimpangan hasil ramalan terhadap data asli. Semakin kecil nilainya, semakin akurat peramalannya.</p>
+                                <p class="mt-2 text-xs text-slate-500">Rata-rata selisih (MAE), persentase selisih (MAPE), dan RMSE mengukur penyimpangan hasil ramalan terhadap data asli. Semakin kecil nilainya, semakin akurat peramalannya.</p>
                             @else
                                 <div class="rounded-lg border border-line p-4 text-sm text-slate-600">
                                     <p class="mb-2">
                                         Model terpilih: <strong class="font-semibold text-slate-800">{{ $namaModel[$prediksi['model_terbaik']] ?? ucwords(str_replace('_', ' ', $prediksi['model_terbaik'])) }}</strong>
                                     </p>
-                                    <div class="flex gap-6 text-sm">
+                                    <div class="flex flex-wrap gap-6 text-sm">
                                         <div>
                                             <span class="text-slate-500">Rata-rata selisih (MAE):</span>
                                             <span class="font-semibold text-slate-800">{{ $prediksi['mae'] !== null ? $fmt($prediksi['mae']) : '-' }}</span>
@@ -263,10 +285,11 @@
                                             <span class="text-slate-500">Persentase selisih (MAPE):</span>
                                             <span class="font-semibold text-slate-800">{{ $prediksi['mape'] !== null ? $fmt($prediksi['mape']).'%' : '-' }}</span>
                                         </div>
+                                        <div>
+                                            <span class="text-slate-500">RMSE:</span>
+                                            <span class="font-semibold text-slate-800">{{ ($prediksi['rmse'] ?? null) !== null ? $fmt($prediksi['rmse']) : '-' }}</span>
+                                        </div>
                                     </div>
-                                    <p class="mt-3 text-xs text-slate-500">
-                                        Detail evaluasi perbandingan seluruh model dan rentang kisaran hanya muncul setelah prediksi dibuat ulang melalui tombol di atas.
-                                    </p>
                                 </div>
                             @endif
                         </div>

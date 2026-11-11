@@ -114,11 +114,12 @@ class DatasetController extends Controller
 
     public function clean(Request $request, int $id)
     {
-        $timpa = $request->boolean('timpa');
+        $timpa = $request->boolean('timpa') || $request->boolean('paksa')
+            || $request->input('timpa') === 'true' || $request->input('paksa') === 'true';
 
         try {
-            $param = $timpa ? ['timpa' => 'true'] : [];
-            $res = FastApi::http()->post("/datasets/{$id}/clean", $param);
+            $endpoint = "/datasets/{$id}/clean" . ($timpa ? '?timpa=true' : '');
+            $res = FastApi::http()->post($endpoint);
         } catch (ConnectionException $e) {
             return back()->with('gagal', FastApi::OFFLINE);
         }

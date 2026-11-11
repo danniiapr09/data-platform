@@ -148,6 +148,30 @@ class AnomaliController extends Controller
     }
 
     /**
+     * Pratinjau hasil review sebelum diterapkan.
+     */
+    public function preview(Request $request, int $id)
+    {
+        if (! config('fitur.apply_review', false)) {
+            return response()->json(['detail' => 'Fitur terapkan review belum diaktifkan.'], 400);
+        }
+
+        try {
+            $res = FastApi::http()->post("/datasets/{$id}/apply-review?preview=true");
+        } catch (ConnectionException $e) {
+            return response()->json(['detail' => FastApi::OFFLINE], 503);
+        }
+
+        if ($res->failed()) {
+            return response()->json([
+                'detail' => FastApi::pesan($res, 'Pratinjau hasil review belum bisa diproses.')
+            ], $res->status());
+        }
+
+        return response()->json($res->json());
+    }
+
+    /**
      * Terapkan hasil review (A4).
      */
     public function terapkan(int $id)
@@ -167,9 +191,9 @@ class AnomaliController extends Controller
         }
 
         $r = $res->json();
-        $pesan = ($r['diterapkan'] ?? false)
-            ? "Hasil review diterapkan: {$r['baris_dibuang']} baris dibuang, tersimpan sebagai versi {$r['versi_baru']}."
-            : ($r['pesan'] ?? 'Tidak ada baris yang perlu dibuang.');
+        $barisDibuang = $r['baris_dibuang'] ?? 0;
+        $versiBaru = $r['versi_baru'] ?? '';
+        $pesan = "Hasil review berhasil diterapkan. {$barisDibuang} baris data dibuang dan tersimpan sebagai data bersih versi {$versiBaru}.";
 
         return back()->with('sukses', $pesan);
     }

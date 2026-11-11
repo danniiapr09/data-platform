@@ -299,22 +299,149 @@
                 </div>
             @endif
 
-            {{-- Bagian Terapkan Hasil Review (A4: Nonaktif & Terproteksi) --}}
-            <div class="mt-8 rounded-2xl border border-line bg-white p-5 sm:p-6 shadow-card flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h3 class="font-bold text-ink text-base">Terapkan hasil review</h3>
-                    <p class="mt-1 max-w-xl text-xs leading-relaxed text-slate-600">
-                        Fitur penerapan hasil review (membuang baris data bersih yang ditolak) sedang disiapkan di layanan data. Pilihan yang Anda tandai tetap tersimpan aman di sistem.
-                    </p>
+            {{-- Bagian Terapkan Hasil Review --}}
+            <div class="mt-8 rounded-2xl border border-line bg-white p-5 sm:p-6 shadow-card">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-bold text-ink text-base">Terapkan hasil review</h3>
+                        <p class="mt-1 max-w-xl text-xs leading-relaxed text-slate-600">
+                            Baris data yang anomalinya ditolak akan dibuang dari data bersih dan disimpan sebagai versi baru. Data mentah asli tetap tersimpan utuh.
+                        </p>
+                    </div>
+                    <div>
+                        @if (config('fitur.apply_review', false))
+                            <button type="button"
+                                    id="btnTerapkanReview"
+                                    onclick="siapkanPreviewReview(this)"
+                                    class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition shadow-sm focus-visible:outline-brand-600">
+                                <span>Terapkan hasil review</span>
+                            </button>
+                        @else
+                            <button type="button" disabled
+                                    class="inline-flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-400 cursor-not-allowed select-none shadow-none"
+                                    title="Fitur ini sedang disiapkan">
+                                <span>Terapkan hasil review</span>
+                                <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">Segera hadir</span>
+                            </button>
+                        @endif
+                    </div>
                 </div>
-                <div>
-                    <button type="button" disabled
-                            class="inline-flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-400 cursor-not-allowed select-none shadow-none"
-                            title="Fitur ini sedang disiapkan">
-                        <span>Terapkan hasil review</span>
-                        <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">Segera hadir</span>
-                    </button>
-                </div>
+
+                <div id="preview-error-pesan" class="hidden mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"></div>
             </div>
+
+            @if (config('fitur.apply_review', false))
+                <x-konfirmasi-dialog
+                    id="dialogTerapkanReview"
+                    judul="Terapkan hasil review data?"
+                    deskripsi="Penerapan review akan membuang baris data dengan anomali ditolak dari data bersih."
+                    varian="amber"
+                    teksKonfirmasi="Ya, terapkan"
+                    teksBatal="Batal"
+                    :action="route('anomali.terapkan', $id)">
+                    <div class="space-y-4">
+                        <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                            <div class="flex items-center gap-2 font-semibold text-amber-900 mb-2">
+                                <svg class="h-4 w-4 shrink-0 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <span>Ringkasan perubahan data bersih</span>
+                            </div>
+                            <ul class="space-y-2 text-xs leading-relaxed text-amber-950">
+                                <li class="flex items-start gap-2">
+                                    <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                    <span>Sebanyak <strong id="preview-baris-dibuang" class="font-bold">-</strong> baris data dengan anomali ditolak akan dibuang.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                    <span>Data bersih versi baru (<span id="preview-versi-baru">-</span>) akan berisi <strong id="preview-baris-sesudah" class="font-bold">-</strong> baris data.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"></span>
+                                    <span>Versi data bersih sebelumnya dan berkas mentah asli tetap tersimpan aman.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div id="preview-peringatan-wrapper" class="hidden rounded-xl border border-red-200 bg-red-50 p-4">
+                            <div class="flex items-center gap-2 font-semibold text-red-900 mb-1">
+                                <svg class="h-4 w-4 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <span>Perhatian</span>
+                            </div>
+                            <ul id="preview-peringatan-list" class="space-y-1 text-xs text-red-900"></ul>
+                        </div>
+                    </div>
+                </x-konfirmasi-dialog>
+
+                <script>
+                    function siapkanPreviewReview(btn) {
+                        const teksAsli = btn.innerHTML;
+                        btn.disabled = true;
+                        btn.innerHTML = '<span>Memeriksa…</span>';
+
+                        const errEl = document.getElementById('preview-error-pesan');
+                        if (errEl) errEl.classList.add('hidden');
+
+                        fetch('{{ route('anomali.terapkan.preview', $id) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(async (res) => {
+                            const data = await res.json();
+                            if (!res.ok) {
+                                throw new Error(data.detail || 'Tidak dapat memuat pratinjau hasil review.');
+                            }
+                            return data;
+                        })
+                        .then((data) => {
+                            const dibuangEl = document.getElementById('preview-baris-dibuang');
+                            const versiEl = document.getElementById('preview-versi-baru');
+                            const sesudahEl = document.getElementById('preview-baris-sesudah');
+
+                            if (dibuangEl) dibuangEl.textContent = data.baris_dibuang;
+                            if (versiEl) versiEl.textContent = 'v' + (data.versi_lama + 1);
+                            if (sesudahEl) sesudahEl.textContent = data.baris_sesudah;
+
+                            const warnList = document.getElementById('preview-peringatan-list');
+                            const warnWrap = document.getElementById('preview-peringatan-wrapper');
+                            if (warnList && warnWrap) {
+                                warnList.innerHTML = '';
+                                if (data.peringatan && data.peringatan.length > 0) {
+                                    data.peringatan.forEach(p => {
+                                        const li = document.createElement('li');
+                                        li.textContent = p;
+                                        warnList.appendChild(li);
+                                    });
+                                    warnWrap.classList.remove('hidden');
+                                } else {
+                                    warnWrap.classList.add('hidden');
+                                }
+                            }
+
+                            if (typeof window['bukaDialog_dialogTerapkanReview'] === 'function') {
+                                window['bukaDialog_dialogTerapkanReview'](btn);
+                            }
+                        })
+                        .catch((err) => {
+                            if (errEl) {
+                                errEl.textContent = err.message;
+                                errEl.classList.remove('hidden');
+                            } else {
+                                alert(err.message);
+                            }
+                        })
+                        .finally(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = teksAsli;
+                        });
+                    }
+                </script>
+            @endif
         </section>
 @endsection
