@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { MainLayout } from '@/layouts/MainLayout';
 import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
+import { ToastContainer } from '@/components/common/Toast';
 
 import { HomePage } from '@/pages/HomePage';
 import { CatalogPage } from '@/pages/CatalogPage';
@@ -50,6 +51,7 @@ export const App: React.FC = () => {
           {/* Fallback ke Beranda jika rute tidak ditemukan */}
           <Route path="*" element={<Navigate to="/beranda" replace />} />
         </Routes>
+        <ToastContainer />
       </BrowserRouter>
     </QueryClientProvider>
   );

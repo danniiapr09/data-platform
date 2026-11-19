@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Database, UploadCloud, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, Database, UploadCloud } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
@@ -19,34 +19,29 @@ export const Sidebar: React.FC = () => {
       label: 'Unggah Dataset Baru',
       icon: <UploadCloud className="w-5 h-5" />,
     },
-    {
-      to: '/workspace/demo',
-      label: 'Workspace Demo',
-      icon: <FileSpreadsheet className="w-5 h-5" />,
-    },
   ];
 
   return (
     <aside className="w-64 flex-shrink-0 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex flex-col min-h-screen">
-      <div className="p-4 border-b border-border-light dark:border-border-dark">
-        <div className="flex items-center gap-2">
+      <div className="h-16 px-4 border-b border-border-light dark:border-border-dark flex items-center">
+        <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-button bg-brand-primary-light dark:bg-brand-cyan flex items-center justify-center text-white dark:text-canvas-dark font-bold text-sm">
             PD
           </div>
           <div>
             <h1 className="text-sm font-bold leading-tight text-text-primary-light dark:text-text-primary-dark">
-              Platform Data
+              Platform Data & Forecasting
             </h1>
             <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
-              Sistem Analisis & Prediksi
+              Sistem Registri & Analisis
             </p>
           </div>
         </div>
       </div>
 
-      <nav className="p-3 space-y-1 flex-1">
+      <nav className="p-3 space-y-1 flex-1" aria-label="Navigasi Global">
         <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-text-muted-light dark:text-text-muted-dark">
-          Navigasi Utama
+          Navigasi Workspace
         </div>
         {navItems.map((item) => (
           <NavLink
@@ -65,11 +60,6 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
-
-      <div className="p-4 border-t border-border-light dark:border-border-dark text-xs text-text-muted-light dark:text-text-muted-dark">
-        <p className="font-medium">Versi Data Bersih v2.4</p>
-        <p className="mt-0.5">Integritas Non-Destruktif</p>
-      </div>
     </aside>
   );
 };

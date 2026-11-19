@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiErrorDetail } from '@/types/api';
+import { showToast } from '@/components/common/Toast';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -43,6 +44,7 @@ apiClient.interceptors.response.use(
         'Koneksi ke server backend terputus. Pastikan server aktif di ' + baseURL;
     } else {
       const status = error.response.status;
+      // TODO(B-12): Mendukung format error JSON terstandar (detail, error_code, field, timestamp)
       const serverDetail = error.response.data?.detail;
 
       switch (status) {
@@ -61,6 +63,7 @@ apiClient.interceptors.response.use(
           break;
         case 404:
           userMessage =
+            serverDetail ||
             'Data atau sumber daya yang diminta tidak ditemukan di server backend.';
           break;
         case 409:
@@ -84,6 +87,13 @@ apiClient.interceptors.response.use(
 
     // Tempelkan pesan yang telah dilokalisasi ke objek error
     (error as Error & { localizedMessage?: string }).localizedMessage = userMessage;
+
+    // Tampilkan toast error kecuali untuk polling background /health
+    const reqUrl = error.config?.url || '';
+    if (reqUrl !== '/health') {
+      showToast(userMessage, 'error');
+    }
+
     return Promise.reject(error);
   }
 );
