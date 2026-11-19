@@ -1,0 +1,91 @@
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Surface & Struktur Light Mode */
+    --color-canvas: #F8FAFC;
+    --color-surface: #FFFFFF;
+    --color-header: #F1F5F9;
+    --color-border: #E2E8F0;
+
+    /* Teks Light Mode */
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #475569;
+    --color-text-muted: #64748B;
+
+    /* Brand & Aksen Light Mode */
+    --color-brand-primary: #1D4ED8;
+    --color-brand-cyan: #0EA5E9;
+    --color-brand-violet: #8B5CF6;
+
+    /* Status Anomali Light Mode */
+    --color-anomaly-success-text: #15803D;
+    --color-anomaly-success-bg: #DCFCE7;
+    --color-anomaly-warning-text: #B45309;
+    --color-anomaly-warning-bg: #FEF3C7;
+    --color-anomaly-danger-text: #B91C1C;
+    --color-anomaly-danger-bg: #FEE2E2;
+
+    /* Sel Dimodifikasi Manual Light Mode */
+    --color-cell-modified-bg: #FEF08A;
+    --color-cell-modified-border: #CA8A04;
+  }
+
+  .dark {
+    /* Surface & Struktur Dark Mode (Obsidian Data Mode) */
+    --color-canvas: #09090B;
+    --color-surface: #121215;
+    --color-header: #0C2D3E;
+    --color-border: #27272A;
+
+    /* Teks Dark Mode */
+    --color-text-primary: #F8FAFC;
+    --color-text-secondary: #A1A1AA;
+    --color-text-muted: #71717A;
+
+    /* Brand & Aksen Dark Mode */
+    --color-brand-primary: #38BDF8;
+    --color-brand-cyan: #0EA5E9;
+    --color-brand-violet: #8B5CF6;
+
+    /* Status Anomali Dark Mode */
+    --color-anomaly-success-text: #4ADE80;
+    --color-anomaly-success-bg: #14532D;
+    --color-anomaly-warning-text: #FBBF24;
+    --color-anomaly-warning-bg: #451A03;
+    --color-anomaly-danger-text: #F87171;
+    --color-anomaly-danger-bg: #450A0A;
+
+    /* Sel Dimodifikasi Manual Dark Mode */
+    --color-cell-modified-bg: #422006;
+    --color-cell-modified-border: #EAB308;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Utility untuk angka tabel dan metrik */
+  .tabular-numbers {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Garis kiri 3px untuk sel audit perbaikan fisik */
+  .border-l-audit {
+    border-left-width: 3px;
+    border-left-style: solid;
+  }
+}
