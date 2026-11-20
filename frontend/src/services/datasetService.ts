@@ -2,15 +2,29 @@ import { QueryClient } from '@tanstack/react-query';
 import { apiClient } from './apiClient';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
 import {
+  AnomalyGroupBy,
+  AnomalyItem,
+  AnomalyItemsResponse,
+  AnomalyReviewActionStatus,
+  AnomalyStatus,
+  AnomalySummaryResponse,
+  BulkReviewPayload,
+  BulkReviewResponse,
   CleanPreviewResponse,
   CleanReportResponse,
   ColumnDictionaryResponse,
   DashboardSummaryData,
   DashboardTopPendingItem,
+  DataEditsListResponse,
   DatasetDetail,
   DatasetListItem,
   DatasetPreviewResponse,
   HistoryLogItem,
+  PatchDataPayload,
+  PatchDataResponse,
+  ReviewSingleAnomalyResponse,
+  RunCleanResponse,
+  UnifiedDataReviewResponse,
   UploadDatasetResponse,
 } from '@/types/dataset';
 
@@ -18,6 +32,8 @@ import {
  * Lapisan service dataset dengan integrasi saklar kemampuan backend (BACKEND_CAPABILITIES)
  * dan penanda TODO(B-xx) sesuai Bagian 12 PRD.
  */
+
+export const MAX_ANOMALIES_BATCH_LOAD = 2000;
 
 // B-08: Mengambil daftar katalog seluruh dataset (GET /datasets)
 // TODO(B-08): Manfaatkan metadata format, file_size_bytes, sheet_name, jumlah_baris, jumlah_kolom,
@@ -230,6 +246,205 @@ export async function getDatasetHistory(
   return response.data;
 }
 
+// F-11: Eksekusi Pembersihan Otomatis (POST /datasets/{id}/clean)
+// Memakai skipErrorToast: true agar konflik HTTP 409 ditangani oleh modal konfirmasi tanpa toast error ganda
+export async function runDatasetCleaning(
+  datasetId: number | string,
+  timpa = false
+): Promise<RunCleanResponse> {
+  const response = await apiClient.post<RunCleanResponse>(
+    `/datasets/${datasetId}/clean`,
+    null,
+    {
+      params: timpa ? { timpa: true } : undefined,
+      skipErrorToast: true,
+    }
+  );
+  return response.data;
+}
+
+// F-13: Dashboard Ringkasan Anomali (GET /datasets/{id}/anomalies/summary)
+export async function getAnomalySummary(
+  datasetId: number | string,
+  params?: {
+    group_by?: AnomalyGroupBy;
+    data_kolom?: string | null;
+    status?: AnomalyStatus | null;
+  }
+): Promise<AnomalySummaryResponse> {
+  const queryParams: Record<string, string> = {};
+  if (params?.group_by) queryParams.group_by = params.group_by;
+  if (params?.group_by === 'data' && params?.data_kolom) {
+    queryParams.data_kolom = params.data_kolom;
+  }
+  if (params?.status) queryParams.status = params.status;
+
+  const response = await apiClient.get<AnomalySummaryResponse>(
+    `/datasets/${datasetId}/anomalies/summary`,
+    { params: queryParams }
+  );
+  return response.data;
+}
+
+// F-14: Daftar Item Anomali dengan Filter & Paginasi Server (GET /datasets/{id}/anomalies/items)
+export async function getAnomalyItems(
+  datasetId: number | string,
+  params?: {
+    jenis?: string | null;
+    kolom?: string | null;
+    status?: AnomalyStatus | null;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<AnomalyItemsResponse> {
+  const queryParams: Record<string, string | number> = {
+    limit: params?.limit ?? 50,
+    offset: params?.offset ?? 0,
+  };
+  if (params?.jenis) queryParams.jenis = params.jenis;
+  if (params?.kolom) queryParams.kolom = params.kolom;
+  if (params?.status) queryParams.status = params.status;
+
+  const response = await apiClient.get<AnomalyItemsResponse>(
+    `/datasets/${datasetId}/anomalies/items`,
+    { params: queryParams }
+  );
+  return response.data;
+}
+
+/**
+ * Memuat item anomali dataset hingga maksimal MAX_ANOMALIES_BATCH_LOAD (2.000 item).
+ * Jika total anomali > 2.000, mengembalikan `isTruncated: true` agar UI beralih ke paginasi/filter server.
+ */
+export async function getBoundedAnomalyItems(
+  datasetId: number | string,
+  filters?: {
+    jenis?: string | null;
+    kolom?: string | null;
+    status?: AnomalyStatus | null;
+  }
+): Promise<{
+  items: AnomalyItem[];
+  total: number;
+  isTruncated: boolean;
+}> {
+  const pageSize = 500; // Batas maksimum per request di anomalies.py: min(max(limit, 1), 500)
+  const firstPage = await getAnomalyItems(datasetId, {
+    ...filters,
+    limit: pageSize,
+    offset: 0,
+  });
+
+  const collected: AnomalyItem[] = [...firstPage.data];
+  const total = firstPage.total;
+  const maxToLoad = Math.min(total, MAX_ANOMALIES_BATCH_LOAD);
+
+  let currentOffset = pageSize;
+  while (collected.length < maxToLoad && currentOffset < maxToLoad) {
+    const nextPage = await getAnomalyItems(datasetId, {
+      ...filters,
+      limit: Math.min(pageSize, maxToLoad - currentOffset),
+      offset: currentOffset,
+    });
+    if (nextPage.data.length === 0) break;
+    collected.push(...nextPage.data);
+    currentOffset += pageSize;
+  }
+
+  return {
+    items: collected,
+    total,
+    isTruncated: total > MAX_ANOMALIES_BATCH_LOAD,
+  };
+}
+
+// F-15: Verifikasi Individual Anomali: Terima / Tolak / Kembalikan ke Pending (PATCH /anomalies/{anomaly_id})
+export async function patchAnomalyStatus(
+  anomalyId: number,
+  status: AnomalyReviewActionStatus
+): Promise<ReviewSingleAnomalyResponse> {
+  const response = await apiClient.patch<ReviewSingleAnomalyResponse>(
+    `/anomalies/${anomalyId}`,
+    { status }
+  );
+  return response.data;
+}
+
+// F-16: Verifikasi Massal / Bulk Review (POST /datasets/{id}/anomalies/review)
+export async function postBulkAnomalyReview(
+  datasetId: number | string,
+  payload: BulkReviewPayload
+): Promise<BulkReviewResponse> {
+  const response = await apiClient.post<BulkReviewResponse>(
+    `/datasets/${datasetId}/anomalies/review`,
+    payload
+  );
+  return response.data;
+}
+
+// F-15 & F-19: Edit Nilai Sel via Popover Inline Editor (PATCH /datasets/{id}/data)
+export async function patchDatasetCells(
+  datasetId: number | string,
+  payload: PatchDataPayload
+): Promise<PatchDataResponse> {
+  const response = await apiClient.patch<PatchDataResponse>(
+    `/datasets/${datasetId}/data`,
+    payload
+  );
+  return response.data;
+}
+
+// F-20: Riwayat Perubahan Data / Audit Log (GET /datasets/{id}/edits)
+export async function getDatasetEdits(
+  datasetId: number | string,
+  params?: {
+    row_index?: number | null;
+    kolom?: string | null;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<DataEditsListResponse> {
+  const queryParams: Record<string, string | number> = {
+    limit: params?.limit ?? 100,
+    offset: params?.offset ?? 0,
+  };
+  if (params?.row_index !== undefined && params?.row_index !== null) {
+    queryParams.row_index = params.row_index;
+  }
+  if (params?.kolom) {
+    queryParams.kolom = params.kolom;
+  }
+
+  const response = await apiClient.get<DataEditsListResponse>(
+    `/datasets/${datasetId}/edits`,
+    { params: queryParams }
+  );
+  return response.data;
+}
+
+// B-05: Endpoint Grid Data Terpadu dengan Penanda Anomali per Sel
+// TODO(B-05): Aktifkan saklar B05_UNIFIED_DATA_REVIEW_ENDPOINT ketika GET /datasets/{id}/data-review tersedia di backend.
+export async function getUnifiedDataReview(
+  datasetId: number | string,
+  params?: {
+    limit?: number;
+    offset?: number;
+    status?: AnomalyStatus | null;
+    jenis?: string | null;
+    kolom?: string | null;
+    q?: string | null;
+  }
+): Promise<UnifiedDataReviewResponse | null> {
+  if (!BACKEND_CAPABILITIES.B05_UNIFIED_DATA_REVIEW_ENDPOINT) {
+    return null;
+  }
+  const response = await apiClient.get<UnifiedDataReviewResponse>(
+    `/datasets/${datasetId}/data-review`,
+    { params }
+  );
+  return response.data;
+}
+
 // B-03: Profil skema kolom permanen dan deskripsi kamus data
 // TODO(B-03): Aktifkan saklar B03_COLUMN_DICTIONARY_ENDPOINT ketika GET /datasets/{id}/columns tersedia di backend.
 export async function getDatasetColumnDictionary(
@@ -278,7 +493,3 @@ export async function getHierarchyData(datasetId: string) {
 export async function loginOfficer() {
   return Promise.resolve({ user: 'pegawai_instansi', role: 'admin' });
 }
-
-// B-02: Saluran live sync pembaruan real-time
-// TODO(B-02): Hubungkan ke WebSocket WS /ws/datasets/{id} atau Server-Sent Events GET /datasets/{id}/events.
-// Saat ini menggunakan status pengambilan data React Query ("Data terkini").

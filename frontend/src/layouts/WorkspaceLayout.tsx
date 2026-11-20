@@ -38,6 +38,10 @@ export const WorkspaceLayout: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['dataset-clean-preview', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-clean-report', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-history', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-anomalies-summary', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-anomalies-items', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-edits', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-unified-review', datasetId] });
   };
 
   const errorMessage =

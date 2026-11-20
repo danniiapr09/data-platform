@@ -1,5 +1,5 @@
 /**
- * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2
+ * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2 & Fase 3
  *
  * Seluruh saklar bernilai `false` secara default sampai endpoint atau perluasan payload
  * diimplementasikan dan diverifikasi bersama pengembang backend.
@@ -22,6 +22,23 @@ export const BACKEND_CAPABILITIES = {
    *   secara paralel terbatas (maksimal 5 request sekaligus).
    */
   B01_RINGKASAN_ENDPOINT: false,
+
+  /**
+   * B-02: Saluran Pembaruan Real-Time (WebSocket atau Server-Sent Events)
+   * - Endpoint yang dibutuhkan: `WS /ws/datasets/{dataset_id}` atau `GET /datasets/{dataset_id}/events`
+   * - Bentuk pesan event yang diharapkan (sesuai usulan B-02 PRD Bagian 12):
+   *   {
+   *     event: 'cleaned' | 'anomaly_reviewed' | 'data_edited' | 'review_applied' | 'forecasted';
+   *     dataset_id: number;
+   *     versi_bersih: number | null;
+   *     timestamp: string;
+   *   }
+   * - Status: belum tersedia di backend.
+   * - Perilaku saat false: Header Workspace menampilkan indikator kesegaran data React Query
+   *   ("Data terkini" dengan titik status statis, atau "Menyegarkan..." dengan animasi putar saat fetch)
+   *   tanpa menampilkan teks "Live Sync", dan setiap mutasi menyegarkan query terkait secara reaktif.
+   */
+  B02_LIVE_SYNC_CHANNEL: false,
 
   /**
    * B-03: Endpoint Profil Kolom Permanen & Kamus Data (Data Dictionary)
@@ -48,6 +65,56 @@ export const BACKEND_CAPABILITIES = {
    *     sampel dari `clean-preview`, serta "-" untuk nilai unik dan kolom Deskripsi.
    */
   B03_COLUMN_DICTIONARY_ENDPOINT: false,
+
+  /**
+   * B-04: Penyertaan Field `row_index` Eksplisit pada Preview Data Bersih
+   * - Endpoint yang dibutuhkan: `GET /datasets/{dataset_id}/clean-preview`
+   * - Bentuk respons yang diharapkan (sesuai usulan B-04 PRD Bagian 12):
+   *   {
+   *     dataset_id: number;
+   *     versi: number;
+   *     preview: Array<Record<string, unknown> & { __row_index?: number; row_index?: number }>;
+   *     row_indices?: number[];
+   *   }
+   * - Status: belum tersedia di backend (`cleaning.py` saat ini mengembalikan `[r.row_json for r in rows]`).
+   * - Perilaku saat false: Frontend menjalankan fungsi murni pemetaan & uji silang deterministik
+   *   (`rowIndexMapper.ts`). Jika ada satu saja anomali yang tidak lulus uji silang nilai sel atau ambigu,
+   *   tampilan otomatis beralih ke "Mode Daftar Anomali" agar tidak pernah mewarnai atau mengedit baris yang salah.
+   */
+  B04_CLEAN_PREVIEW_ROW_INDEX: false,
+
+  /**
+   * B-05: Endpoint Grid Data Terpadu dengan Penanda Anomali per Sel
+   * - Endpoint yang dibutuhkan: `GET /datasets/{dataset_id}/data-review`
+   * - Parameter query yang diharapkan: `limit`, `offset`, `status`, `jenis`, `kolom`, `q`
+   * - Bentuk respons yang diharapkan (sesuai usulan B-05 PRD Bagian 12):
+   *   {
+   *     dataset_id: number;
+   *     versi: number;
+   *     total_baris: number;
+   *     limit: number;
+   *     offset: number;
+   *     rows: Array<{
+   *       row_index: number;
+   *       baris_di_file_asli: number;
+   *       data: Record<string, unknown>;
+   *       anomali: Record<string, {
+   *         id: number;
+   *         row_index: number;
+   *         baris_di_file_asli: number;
+   *         kolom: string;
+   *         jenis: string;
+   *         alasan: string;
+   *         status: 'pending' | 'diterima' | 'ditolak' | 'diperbaiki';
+   *       }>;
+   *     }>;
+   *   }
+   * - Status: belum tersedia di backend.
+   * - Perilaku saat false: Menggabungkan `GET /datasets/{id}/clean-preview?limit=200`,
+   *   `GET /datasets/{id}/anomalies/items`, dan `GET /datasets/{id}/edits` dengan verifikasi
+   *   keselamatan pengenal baris di sisi klien.
+   */
+  B05_UNIFIED_DATA_REVIEW_ENDPOINT: false,
 
   /**
    * B-08: Perluasan Metadata Katalog Dataset (`GET /datasets`)
@@ -102,4 +169,19 @@ export const BACKEND_CAPABILITIES = {
    *   saat hover dan fokus keyboard.
    */
   B10_FULL_CSV_EXPORT_ENDPOINT: false,
+
+  /**
+   * B-12: Format Terstandar untuk Respon Error HTTP
+   * - Bentuk respons error JSON yang diharapkan (sesuai usulan B-12 PRD Bagian 12):
+   *   {
+   *     detail: string;
+   *     error_code?: string;
+   *     field?: string;
+   *     timestamp?: string;
+   *   }
+   * - Status: belum tersedia penuh di seluruh router backend (saat ini FastAPI mengembalikan `{ detail: string }`).
+   * - Perilaku saat false: Interseptor `apiClient` membaca `error.response.data?.detail` dan
+   *   memetakan kode status HTTP (400, 401, 403, 404, 409, 422, 500) ke pesan Bahasa Indonesia.
+   */
+  B12_STANDARD_ERROR_FORMAT: false,
 } as const;

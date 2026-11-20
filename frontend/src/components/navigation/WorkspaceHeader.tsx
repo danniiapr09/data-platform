@@ -18,6 +18,7 @@ import {
   FormatFileBadge,
   ProcessingStatusBadge,
 } from '@/components/common/StatusBadge';
+import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
 import { DatasetDetail } from '@/types/dataset';
 import { formatNumberId, normalizeJenisLabel } from '@/utils/formatters';
 
@@ -133,16 +134,22 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
                       ? `Versi Bersih: v${dataset.versi_bersih}`
                       : 'Data Mentah: v0'}
                   </span>
-                  {/* Penanda kesegaran data React Query (sampai B-02 WebSocket/SSE tersedia) */}
+                  {/* Penanda kesegaran data React Query (Live Sync hanya muncul saat B02_LIVE_SYNC_CHANNEL aktif) */}
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-surface-light dark:bg-surface-dark text-text-secondary-light dark:text-text-secondary-dark border border-border-light dark:border-border-dark">
                     {isFetching ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin text-brand-cyan" />
+                        <RefreshCw className="w-3 h-3 animate-spin text-brand-cyan flex-shrink-0" />
                         <span>Menyegarkan...</span>
+                      </>
+                    ) : BACKEND_CAPABILITIES.B02_LIVE_SYNC_CHANNEL ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-anomaly-success-text-light dark:bg-anomaly-success-text-dark flex-shrink-0" />
+                        <span>Live Sync • Data terkini</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-anomaly-success-text-light dark:text-anomaly-success-text-dark" />
+                        <span className="w-2 h-2 rounded-full bg-anomaly-success-text-light dark:bg-anomaly-success-text-dark flex-shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-anomaly-success-text-light dark:text-anomaly-success-text-dark flex-shrink-0" />
                         <span>Data terkini</span>
                       </>
                     )}

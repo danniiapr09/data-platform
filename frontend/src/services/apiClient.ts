@@ -2,6 +2,13 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiErrorDetail } from '@/types/api';
 import { showToast } from '@/components/common/Toast';
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** Jika true, interseptor global tidak memunculkan toast error (ditangani komponen/modal) */
+    skipErrorToast?: boolean;
+  }
+}
+
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export const apiClient = axios.create({
@@ -16,8 +23,8 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const apiKey = import.meta.env.VITE_INTERNAL_API_KEY;
-    if (apiKey) {
-      config.headers.set('X-API-Key', apiKey);
+    if (apiKey && String(apiKey).trim() !== '') {
+      config.headers.set('X-API-Key', String(apiKey).trim());
     }
     // Header identitas default pegawai instansi untuk mode pengembangan
     if (!config.headers.has('X-User')) {
@@ -46,6 +53,9 @@ apiClient.interceptors.response.use(
       const status = error.response.status;
       // TODO(B-12): Mendukung format error JSON terstandar (detail, error_code, field, timestamp)
       const serverDetail = error.response.data?.detail;
+      const configuredApiKey = import.meta.env.VITE_INTERNAL_API_KEY;
+      const isApiKeyEmpty =
+        !configuredApiKey || String(configuredApiKey).trim() === '';
 
       switch (status) {
         case 400:
@@ -54,8 +64,13 @@ apiClient.interceptors.response.use(
             'Permintaan data tidak valid. Silakan periksa kembali parameter input.';
           break;
         case 401:
-          userMessage =
-            'Autentikasi gagal atau API key tidak valid. Akses ke sistem ditolak.';
+          if (isApiKeyEmpty) {
+            userMessage =
+              'Autentikasi gagal (401): Kunci API (VITE_INTERNAL_API_KEY) belum dikonfigurasi di frontend/.env.';
+          } else {
+            userMessage =
+              'Autentikasi gagal (401): Kunci API yang dikonfigurasi tidak cocok dengan server backend.';
+          }
           break;
         case 403:
           userMessage =
@@ -88,9 +103,10 @@ apiClient.interceptors.response.use(
     // Tempelkan pesan yang telah dilokalisasi ke objek error
     (error as Error & { localizedMessage?: string }).localizedMessage = userMessage;
 
-    // Tampilkan toast error kecuali untuk polling background /health
+    // Tampilkan toast error kecuali untuk polling background /health atau jika skipErrorToast aktif
     const reqUrl = error.config?.url || '';
-    if (reqUrl !== '/health') {
+    const skipToast = Boolean(error.config?.skipErrorToast);
+    if (reqUrl !== '/health' && !skipToast) {
       showToast(userMessage, 'error');
     }
 

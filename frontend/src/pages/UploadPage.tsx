@@ -55,7 +55,6 @@ export const UploadPage: React.FC = () => {
   const [customCategory, setCustomCategory] = useState<string>('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [serverError, setServerError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
@@ -66,7 +65,6 @@ export const UploadPage: React.FC = () => {
 
   const validateAndSetFile = (file: File) => {
     setValidationError(null);
-    setServerError(null);
 
     const lowerName = file.name.toLowerCase();
     const hasValidExt = ALLOWED_EXTENSIONS.some((ext) =>
@@ -134,7 +132,6 @@ export const UploadPage: React.FC = () => {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
-    setServerError(null);
 
     if (!selectedFile) {
       setValidationError(
@@ -210,11 +207,8 @@ export const UploadPage: React.FC = () => {
         )} baris).`,
         'success'
       );
-    } catch (err) {
-      const msg =
-        (err as Error & { localizedMessage?: string })?.localizedMessage ||
-        'Gagal mengunggah berkas ke server backend.';
-      setServerError(msg);
+    } catch {
+      // Error jaringan/server sudah ditampilkan sekali lewat Toast dari apiClient
     } finally {
       setIsUploading(false);
     }
@@ -436,14 +430,14 @@ export const UploadPage: React.FC = () => {
               </div>
             )}
 
-            {/* Pesan Error Validasi Sisi Klien atau Error Server */}
-            {(validationError || serverError) && (
+            {/* Pesan Error Validasi Sisi Klien (Error server ditangani oleh Toast agar tidak ganda) */}
+            {validationError && (
               <div
                 role="alert"
                 className="p-3.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark border border-anomaly-danger-text-light/30 dark:border-anomaly-danger-text-dark/40 text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark text-xs font-medium flex items-start gap-2.5"
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{validationError || serverError}</span>
+                <span>{validationError}</span>
               </div>
             )}
 

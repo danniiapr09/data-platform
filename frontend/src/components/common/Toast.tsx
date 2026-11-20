@@ -63,7 +63,7 @@ export const ToastContainer: React.FC = () => {
 
   return (
     <div
-      className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-md px-4 pointer-events-none"
+      className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2.5 w-full max-w-sm pointer-events-none"
       role="status"
       aria-live="polite"
       aria-atomic="true"
@@ -90,7 +90,7 @@ export const ToastContainer: React.FC = () => {
           <div
             key={item.id}
             role={isError ? 'alert' : 'status'}
-            className={`pointer-events-auto flex items-start justify-between gap-3 px-4 py-3 rounded-card border shadow-lg text-sm font-medium transition-all ${containerClasses}`}
+            className={`pointer-events-auto w-full flex items-start justify-between gap-3 px-4 py-3 rounded-card border shadow-lg text-sm font-medium transition-all ${containerClasses}`}
           >
             <div className="flex items-start gap-2.5">
               {iconNode}

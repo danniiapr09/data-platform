@@ -1,0 +1,267 @@
+import React, { useEffect } from 'react';
+import {
+  ArrowRight,
+  Clock,
+  Edit3,
+  History,
+  RefreshCw,
+  User,
+  X,
+} from 'lucide-react';
+import { DataEditsListResponse } from '@/types/dataset';
+import {
+  formatCellValueId,
+  formatDateTimeId,
+  formatNumberId,
+} from '@/utils/formatters';
+
+interface AuditLogDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editsResponse?: DataEditsListResponse;
+  isLoading: boolean;
+  isFetching: boolean;
+  onRefresh: () => void;
+}
+
+/**
+ * Slide-over Drawer "Riwayat Perubahan Data (Audit Log)" (F-20)
+ * Menampilkan data nyata dari GET /datasets/{id}/edits:
+ * - Kartu ringkasan transparansi (deskripsi backend, total perubahan, baris diedit, staf pengedit)
+ * - Tabel riwayat perubahan memuat: Versi Baru (v{versi_baru}), Baris File (#{baris_di_file_asli}),
+ *   Kolom, Nilai Lama -> Nilai Baru, Alasan Perubahan, Diubah Oleh, dan Waktu Perubahan.
+ */
+export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
+  isOpen,
+  onClose,
+  editsResponse,
+  isLoading,
+  isFetching,
+  onRefresh,
+}) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const ringkasan = editsResponse?.ringkasan;
+  const editsList = editsResponse?.data || [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-canvas-dark/60 backdrop-blur-xs"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-audit-log-title"
+    >
+      {/* Area klik luar untuk menutup drawer */}
+      <div className="flex-1" onClick={onClose} aria-hidden="true" />
+
+      {/* Kontainer Slide-over Drawer */}
+      <div className="w-full max-w-4xl h-full bg-surface-light dark:bg-surface-dark border-l border-border-light dark:border-border-dark shadow-2xl flex flex-col overflow-hidden">
+        {/* Header Drawer */}
+        <div className="px-6 py-4 bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-button bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark">
+              <History className="w-5 h-5" />
+            </div>
+            <div>
+              <h3
+                id="drawer-audit-log-title"
+                className="text-base font-bold text-text-primary-light dark:text-text-primary-dark"
+              >
+                Riwayat Perubahan Data (Audit Log)
+              </h3>
+              <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                Rekam jejak koreksi nilai sel manual beserta nomor baris file asli, alasan, dan pengedit.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isFetching}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors min-h-control"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
+              />
+              <span>Segarkan</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup drawer Audit Log"
+              className="p-2 rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors min-h-control"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Konten Drawer */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Kartu Ringkasan Transparansi dari ringkasan GET /edits */}
+          {ringkasan && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-card bg-modified-bg-light/30 dark:bg-modified-bg-dark/30 border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark border-t border-r border-b border-border-light dark:border-border-dark">
+                <p className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
+                  {ringkasan.deskripsi}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-card bg-canvas-light dark:bg-canvas-dark border border-border-light dark:border-border-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark block">
+                    Total Perubahan Sel
+                  </span>
+                  <span className="text-lg font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-0.5 block">
+                    {formatNumberId(ringkasan.jumlah_perubahan, 0)}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-card bg-canvas-light dark:bg-canvas-dark border border-border-light dark:border-border-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark block">
+                    Sel Unik Diedit
+                  </span>
+                  <span className="text-lg font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-0.5 block">
+                    {formatNumberId(ringkasan.sel_unik, 0)} sel
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-card bg-canvas-light dark:bg-canvas-dark border border-border-light dark:border-border-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark block">
+                    Persentase Baris Diedit
+                  </span>
+                  <span className="text-lg font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-0.5 block">
+                    {ringkasan.persen_baris_diedit !== null
+                      ? `${formatNumberId(ringkasan.persen_baris_diedit, 2)}%`
+                      : '-'}
+                  </span>
+                  <span className="text-xs text-text-muted-light dark:text-text-muted-dark font-mono tabular-numbers">
+                    ({formatNumberId(ringkasan.baris_unik, 0)} /{' '}
+                    {formatNumberId(ringkasan.baris_bersih, 0)} baris)
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-card bg-canvas-light dark:bg-canvas-dark border border-border-light dark:border-border-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark block">
+                    Staf Pengedit
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-text-primary-light dark:text-text-primary-dark mt-1 block break-words">
+                    {ringkasan.pengedit.length > 0
+                      ? ringkasan.pengedit.join(', ')
+                      : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tabel Riwayat Audit Log */}
+          <div className="rounded-card border border-border-light dark:border-border-dark overflow-hidden">
+            {isLoading ? (
+              <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+                Memuat riwayat perubahan data...
+              </div>
+            ) : editsList.length === 0 ? (
+              <div className="p-12 text-center space-y-2">
+                <Edit3 className="w-8 h-8 mx-auto text-text-muted-light dark:text-text-muted-dark" />
+                <p className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
+                  Belum Ada Riwayat Edit Manual
+                </p>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark max-w-md mx-auto">
+                  Setiap koreksi nilai sel yang Anda simpan melalui tombol Edit pada sel beranomali akan tercatat secara otomatis di sini.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
+                      <th className="py-3 px-4 whitespace-nowrap">Versi</th>
+                      <th
+                        className="py-3 px-4 whitespace-nowrap"
+                        title="Nomor baris di file CSV/Excel asli (baris 1 adalah header)"
+                      >
+                        Baris File
+                      </th>
+                      <th className="py-3 px-4 whitespace-nowrap">Kolom</th>
+                      <th className="py-3 px-4 whitespace-nowrap">
+                        Nilai Lama → Nilai Baru
+                      </th>
+                      <th className="py-3 px-4">Alasan Perubahan</th>
+                      <th className="py-3 px-4 whitespace-nowrap">
+                        Diubah Oleh
+                      </th>
+                      <th className="py-3 px-4 whitespace-nowrap">Waktu</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
+                    {editsList.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-canvas-light dark:hover:bg-canvas-dark/50 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-mono text-xs font-bold whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-full bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark">
+                            v{item.versi_baru}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs font-bold tabular-numbers whitespace-nowrap text-text-primary-light dark:text-text-primary-dark">
+                          #{item.baris_di_file_asli}
+                          <span className="block text-[11px] font-normal text-text-muted-light dark:text-text-muted-dark">
+                            (idx: {item.row_index})
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs font-semibold whitespace-nowrap text-brand-primary-light dark:text-brand-primary-dark">
+                          {item.kolom}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs tabular-numbers whitespace-nowrap">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark line-through">
+                              {formatCellValueId(item.nilai_lama)}
+                            </span>
+                            <ArrowRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark flex-shrink-0" />
+                            <span className="px-2 py-0.5 rounded-button bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark font-bold">
+                              {formatCellValueId(item.nilai_baru)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-xs text-text-primary-light dark:text-text-primary-dark min-w-[200px]">
+                          {item.alasan}
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono whitespace-nowrap text-text-secondary-light dark:text-text-secondary-dark">
+                          <span className="inline-flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" />
+                            <span>{item.diubah_oleh}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono tabular-numbers whitespace-nowrap text-text-muted-light dark:text-text-muted-dark">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{formatDateTimeId(item.waktu)}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

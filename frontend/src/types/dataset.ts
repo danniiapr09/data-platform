@@ -1,11 +1,15 @@
 /**
- * Definisi tipe data entitas dataset, skema kolom, laporan pembersihan, dan ringkasan beranda
- * sesuai kontrak kode backend FastAPI.
+ * Definisi tipe data entitas dataset, skema kolom, laporan pembersihan, anomali, edit sel,
+ * dan ringkasan beranda sesuai kontrak kode backend FastAPI.
  */
 
 export type DatasetProcessingStatus = 'uploaded' | 'cleaned' | 'forecasted';
 
 export type AnomalyStatus = 'diterima' | 'pending' | 'ditolak' | 'diperbaiki';
+
+export type AnomalyReviewActionStatus = 'diterima' | 'ditolak' | 'pending';
+
+export type AnomalyGroupBy = 'jenis' | 'kolom' | 'status' | 'data';
 
 /** Item dari GET /datasets */
 export interface DatasetListItem {
@@ -73,6 +77,8 @@ export interface CleanPreviewResponse {
   dataset_id: number;
   versi: number;
   preview: Array<Record<string, unknown>>;
+  // Field opsional di balik saklar B-04 ketika backend menyertakan row_index eksplisit
+  row_indices?: number[];
 }
 
 /** Respons dari GET /datasets/{id}/clean-report */
@@ -87,6 +93,162 @@ export interface CleanReportResponse {
   anomali_per_jenis: Record<string, number>;
   kelengkapan_persen: number;
   aturan: Record<string, unknown>;
+}
+
+/** Respons dari POST /datasets/{id}/clean */
+export interface RunCleanResponse {
+  dataset_id: number;
+  versi: number;
+  laporan: CleanReportResponse;
+}
+
+/** Item anomali dari GET /datasets/{id}/anomalies/items atau contoh di summary */
+export interface AnomalyItem {
+  id: number;
+  row_index: number;
+  baris_di_file_asli: number;
+  kolom: string;
+  jenis: string;
+  alasan: string;
+  status: AnomalyStatus;
+}
+
+/** Kelompok anomali pada GET /datasets/{id}/anomalies/summary */
+export interface AnomalySummaryGroup {
+  kelompok: string;
+  jumlah: number;
+  pending: number;
+  diterima: number;
+  ditolak: number;
+  diperbaiki: number;
+  contoh: AnomalyItem[];
+}
+
+/** Respons dari GET /datasets/{id}/anomalies/summary */
+export interface AnomalySummaryResponse {
+  dataset_id: number;
+  group_by: AnomalyGroupBy;
+  total: number;
+  per_status: {
+    pending: number;
+    diterima: number;
+    ditolak: number;
+    diperbaiki: number;
+  };
+  kelompok: AnomalySummaryGroup[];
+  deskripsi: string;
+}
+
+/** Respons dari GET /datasets/{id}/anomalies/items */
+export interface AnomalyItemsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: AnomalyItem[];
+}
+
+/** Respons dari PATCH /anomalies/{anomaly_id} */
+export interface ReviewSingleAnomalyResponse {
+  id: number;
+  status: AnomalyReviewActionStatus;
+}
+
+/** Payload untuk POST /datasets/{id}/anomalies/review (Bulk Review) */
+export interface BulkReviewPayload {
+  status: AnomalyReviewActionStatus;
+  jenis?: string | null;
+  kolom?: string | null;
+  ids?: number[] | null;
+  semua?: boolean;
+  dari_status?: AnomalyStatus | 'semua';
+}
+
+/** Respons dari POST /datasets/{id}/anomalies/review */
+export interface BulkReviewResponse {
+  jumlah_diubah: number;
+  status_baru: AnomalyReviewActionStatus;
+}
+
+/** Item perubahan sel pada PATCH /datasets/{id}/data */
+export interface CellEditInputItem {
+  row_index: number;
+  kolom: string;
+  nilai: string | number | null;
+}
+
+/** Payload untuk PATCH /datasets/{id}/data */
+export interface PatchDataPayload {
+  perubahan: CellEditInputItem[];
+  alasan: string;
+}
+
+/** Detail perubahan sel pada respons PATCH /datasets/{id}/data */
+export interface CellEditResultItem {
+  row_index: number;
+  baris_di_file_asli: number;
+  kolom: string;
+  nilai_lama: unknown;
+  nilai_baru: unknown;
+}
+
+/** Respons dari PATCH /datasets/{id}/data */
+export interface PatchDataResponse {
+  versi_baru: number;
+  jumlah_sel_diubah: number;
+  dilewati: number;
+  anomali_diperbaiki: number;
+  diubah_oleh: string;
+  peringatan: string[];
+  perubahan: CellEditResultItem[];
+}
+
+/** Ringkasan audit edit pada GET /datasets/{id}/edits */
+export interface DataEditsSummary {
+  jumlah_perubahan: number;
+  sel_unik: number;
+  baris_unik: number;
+  baris_bersih: number;
+  persen_baris_diedit: number | null;
+  pengedit: string[];
+  deskripsi: string;
+}
+
+/** Item riwayat edit pada GET /datasets/{id}/edits */
+export interface DataEditHistoryItem {
+  id: number;
+  versi_baru: number;
+  row_index: number;
+  baris_di_file_asli: number;
+  kolom: string;
+  nilai_lama: unknown;
+  nilai_baru: unknown;
+  alasan: string;
+  diubah_oleh: string;
+  waktu: string;
+}
+
+/** Respons dari GET /datasets/{id}/edits */
+export interface DataEditsListResponse {
+  ringkasan: DataEditsSummary;
+  total: number;
+  data: DataEditHistoryItem[];
+}
+
+/** Respons dari usulan endpoint terpadu GET /datasets/{id}/data-review (B-05) */
+export interface UnifiedDataReviewRow {
+  row_index: number;
+  baris_di_file_asli: number;
+  data: Record<string, unknown>;
+  anomali: Record<string, AnomalyItem>;
+}
+
+export interface UnifiedDataReviewResponse {
+  dataset_id: number;
+  versi: number;
+  total_baris: number;
+  limit: number;
+  offset: number;
+  rows: UnifiedDataReviewRow[];
 }
 
 /** Item dari GET /datasets/{id}/history */
