@@ -8,6 +8,7 @@ import {
   AnomalyReviewActionStatus,
   AnomalyStatus,
   AnomalySummaryResponse,
+  ApplyReviewResponse,
   BulkReviewPayload,
   BulkReviewResponse,
   CleanPreviewResponse,
@@ -472,13 +473,29 @@ export function getExportCsvUrl(
   return `${base}/datasets/${datasetId}/export/${type}.csv`;
 }
 
-// B-06: Permintaan pratinjau diff sebelum eksekusi Apply Review (Fase 4)
-// TODO(B-06): Tangkap array rincian baris aktual (rows: [...]) yang akan dibuang dari respon preview=true.
-export async function getApplyReviewDiff(datasetId: string) {
-  const response = await apiClient.post(
-    `/datasets/${datasetId}/apply-review?preview=true`
+// F-17 & B-06: Terapkan Hasil Review (POST /datasets/{id}/apply-review)
+// Memakai skipErrorToast: true agar kode status 400 ("Tidak ada baris..." atau "Semua baris akan terbuang...")
+// ditangani secara spesifik di dalam modal dan klasifikasi anomali ditolak tanpa memicu toast error ganda.
+// TODO(B-06): Aktifkan saklar B06_APPLY_REVIEW_DIFF_ROWS ketika backend menyertakan row_json/rows pada preview=true.
+export async function postApplyReview(
+  datasetId: number | string,
+  preview: boolean
+): Promise<ApplyReviewResponse> {
+  const response = await apiClient.post<ApplyReviewResponse>(
+    `/datasets/${datasetId}/apply-review`,
+    null,
+    {
+      params: { preview },
+      skipErrorToast: true,
+    }
   );
   return response.data;
+}
+
+export async function getApplyReviewDiff(
+  datasetId: number | string
+): Promise<ApplyReviewResponse> {
+  return postApplyReview(datasetId, true);
 }
 
 // B-07: Agregasi hierarki dan matriks 2D untuk galeri diagram (Fase 5)

@@ -42,6 +42,7 @@ export const WorkspaceLayout: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['dataset-anomalies-items', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-edits', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-unified-review', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-apply-review-preview', datasetId] });
   };
 
   const errorMessage =

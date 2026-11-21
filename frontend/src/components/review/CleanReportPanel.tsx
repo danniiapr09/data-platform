@@ -25,6 +25,8 @@ interface CleanReportPanelProps {
   groupBy: AnomalyGroupBy;
   dataKolom: string;
   availableColumns: string[];
+  ditolakAktifCount?: number;
+  ditolakSudahDibuangCount?: number;
   onGroupByChange: (newGroupBy: AnomalyGroupBy) => void;
   onDataKolomChange: (newKolom: string) => void;
   onQuickFilterFromGroup?: (groupBy: AnomalyGroupBy, value: string) => void;
@@ -42,6 +44,8 @@ export const CleanReportPanel: React.FC<CleanReportPanelProps> = ({
   groupBy,
   dataKolom,
   availableColumns,
+  ditolakAktifCount,
+  ditolakSudahDibuangCount,
   onGroupByChange,
   onDataKolomChange,
   onQuickFilterFromGroup,
@@ -134,15 +138,30 @@ export const CleanReportPanel: React.FC<CleanReportPanelProps> = ({
               </div>
             </div>
 
-            {/* 3. Ditolak */}
+            {/* 3. Ditolak (Dipisah: Ditolak Aktif vs Sudah Dibuang sesuai Penyesuaian Wajib butir c) */}
             <div className="p-3.5 rounded-card bg-anomaly-danger-bg-light/50 dark:bg-anomaly-danger-bg-dark/40 border border-border-light dark:border-border-dark flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark flex items-center gap-1.5">
                   <X className="w-3.5 h-3.5" />
-                  <span>Ditolak (Siap Buang)</span>
+                  <span>Ditolak (Aktif / Sudah Dibuang)</span>
                 </span>
-                <div className="text-xl font-bold font-mono tabular-numbers text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark mt-1">
-                  {formatNumberId(perStatus.ditolak, 0)}
+                <div className="text-xl font-bold font-mono tabular-numbers text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark mt-1 flex items-baseline gap-2">
+                  <span>
+                    {formatNumberId(
+                      ditolakAktifCount !== undefined
+                        ? ditolakAktifCount
+                        : perStatus.ditolak,
+                      0
+                    )}{' '}
+                    <span className="text-xs font-normal">aktif</span>
+                  </span>
+                  {ditolakSudahDibuangCount !== undefined &&
+                    ditolakSudahDibuangCount > 0 && (
+                      <span className="text-xs font-normal text-text-secondary-light dark:text-text-secondary-dark">
+                        • {formatNumberId(ditolakSudahDibuangCount, 0)} sudah
+                        dibuang
+                      </span>
+                    )}
                 </div>
               </div>
             </div>

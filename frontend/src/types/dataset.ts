@@ -290,3 +290,61 @@ export interface ColumnDictionaryResponse {
   versi: number;
   kolom: ColumnProfileItem[];
 }
+
+/** Rincian baris yang akan/telah dibuang pada respons POST /datasets/{id}/apply-review */
+export interface ApplyReviewDroppedRowDetail {
+  row_index: number;
+  baris_di_file_asli: number;
+  alasan: string[];
+  // Field perluasan di balik saklar B-06 (isi baris aktual dari backend)
+  kolom?: string[];
+  row_json?: Record<string, unknown>;
+}
+
+/** Respons dari POST /datasets/{id}/apply-review (?preview=true maupun ?preview=false) */
+export interface ApplyReviewResponse {
+  dataset_id: number;
+  preview: boolean;
+  versi_lama: number;
+  versi_baru: number | null;
+  baris_sebelum: number;
+  baris_dibuang: number;
+  baris_sesudah: number;
+  anomali_ditolak_diterapkan: number;
+  anomali_pending: number;
+  diterapkan_oleh: string;
+  detail_baris_dibuang: ApplyReviewDroppedRowDetail[];
+  detail_terpotong: boolean;
+  peringatan: string[];
+  deskripsi: string;
+  // Field opsional di balik saklar B-06 jika backend mengembalikan array rows terpisah
+  rows?: Array<{
+    row_index: number;
+    baris_di_file_asli?: number;
+    row_json?: Record<string, unknown>;
+    data?: Record<string, unknown>;
+    alasan?: string[];
+  }>;
+}
+
+/**
+ * Status hasil evaluasi pratinjau Apply Review untuk mengklasifikasikan
+ * anomali ditolak AKTIF vs SUDAH DIBUANG (Penyesuaian Wajib butir c).
+ */
+export type RejectedAnomaliesClassificationMode =
+  | 'exact_from_preview'
+  | 'all_already_dropped'
+  | 'blocked_all_rows'
+  | 'uncertain';
+
+export interface RejectedAnomaliesClassification {
+  mode: RejectedAnomaliesClassificationMode;
+  /** Himpunan row_index dengan anomali ditolak yang masih AKTIF di versi bersih saat ini */
+  activeRejectedRowIndices: Set<number>;
+  /** Himpunan row_index dengan anomali ditolak yang SUDAH DIBUANG pada versi sebelumnya */
+  alreadyDroppedRowIndices: Set<number>;
+  /** Apakah klasifikasi tiap anomali ditolak 100% pasti */
+  isCertain: boolean;
+  /** Catatan netral atau pesan pemblokiran jika ada */
+  message: string | null;
+}

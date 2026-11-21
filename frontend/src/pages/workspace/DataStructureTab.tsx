@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Columns,
   Database,
   Download,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react';
 import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
 import { Button } from '@/components/common/Button';
+import { ProcessingTimelineCard } from '@/components/common/ProcessingTimelineList';
 import { DataTypeBadge, FormatFileBadge } from '@/components/common/StatusBadge';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
 import {
@@ -32,7 +32,6 @@ import {
 import { ColumnProfileItem } from '@/types/dataset';
 import {
   formatCellValueId,
-  formatDateTimeId,
   formatNumberId,
   formatPercentId,
 } from '@/utils/formatters';
@@ -791,49 +790,10 @@ export const DataStructureTab: React.FC = () => {
 
       {/* BAGIAN 3: Linimasa Aktivitas Pemrosesan / Audit Trail (F-10) */}
       {(activeSubTab === 'all' || activeSubTab === 'history') && (
-        <div className="rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-brand-cyan" />
-              <h3 className="text-sm font-bold text-text-primary-light dark:text-text-primary-dark">
-                Linimasa Aktivitas Pemrosesan (F-10)
-              </h3>
-            </div>
-            <span className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
-              {formatNumberId(historyLogs.length, 0)} aktivitas tercatat
-            </span>
-          </div>
-
-          {isHistoryLoading ? (
-            <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
-              Memuat riwayat aktivitas pemrosesan...
-            </div>
-          ) : historyLogs.length === 0 ? (
-            <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
-              Belum ada catatan aktivitas pemrosesan untuk dataset ini.
-            </div>
-          ) : (
-            <ol className="relative border-l-2 border-border-light dark:border-border-dark ml-3 space-y-4">
-              {historyLogs.map((log, index) => (
-                <li key={`${log.langkah}-${index}`} className="ml-5">
-                  <span className="absolute -left-2 flex items-center justify-center w-4 h-4 rounded-full bg-brand-primary-light dark:bg-brand-primary-dark ring-4 ring-surface-light dark:ring-surface-dark" />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold uppercase bg-header-light dark:bg-header-dark text-brand-primary-light dark:text-brand-primary-dark">
-                      {log.langkah}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-mono text-text-muted-light dark:text-text-muted-dark">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>{formatDateTimeId(log.waktu)}</span>
-                    </span>
-                  </div>
-                  <p className="text-sm text-text-primary-light dark:text-text-primary-dark mt-1 font-mono">
-                    {log.ringkasan}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
+        <ProcessingTimelineCard
+          historyLogs={historyLogs}
+          isLoading={isHistoryLoading}
+        />
       )}
 
       {/* Banner Integritas Non-Destruktif & Tombol Unduh Data Mentah (v0) */}

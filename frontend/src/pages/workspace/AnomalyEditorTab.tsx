@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Edit3,
   History,
   Info,
@@ -23,10 +24,16 @@ import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
 import { Button } from '@/components/common/Button';
 import { showToast } from '@/components/common/Toast';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
+import {
+  ApplyReviewModal,
+  ApplyReviewSuccessPayload,
+} from '@/components/review/ApplyReviewModal';
 import { CleanConflictModal } from '@/components/review/CleanConflictModal';
 import { CleanReportPanel } from '@/components/review/CleanReportPanel';
 import { InlineCellEditorPopover } from '@/components/review/InlineCellEditorPopover';
 import { AuditLogDrawer } from '@/components/review/AuditLogDrawer';
+import { ReviewImpactComparisonPanel } from '@/components/review/ReviewImpactComparisonPanel';
+import { VersionHistoryDrawer } from '@/components/review/VersionHistoryDrawer';
 import {
   getAnomalyItems,
   getAnomalySummary,
@@ -34,11 +41,13 @@ import {
   getCleanDataPreview,
   getCleanReport,
   getDatasetEdits,
+  getDatasetHistory,
   getDatasetPreview,
   getUnifiedDataReview,
   MAX_ANOMALIES_BATCH_LOAD,
   patchAnomalyStatus,
   patchDatasetCells,
+  postApplyReview,
   postBulkAnomalyReview,
   runDatasetCleaning,
 } from '@/services/datasetService';
@@ -46,13 +55,23 @@ import {
   AnomalyGroupBy,
   AnomalyReviewActionStatus,
   AnomalyStatus,
+  ApplyReviewResponse,
   CellEditResultItem,
+  RejectedAnomaliesClassification,
 } from '@/types/dataset';
 import { formatCellValueId, formatNumberId } from '@/utils/formatters';
 import {
   buildVerifiedRowMapping,
   VerifiedCleanRow,
 } from '@/utils/rowIndexMapper';
+
+type FilterStatusOption =
+  | 'pending'
+  | 'diterima'
+  | 'ditolak_aktif'
+  | 'ditolak_dibuang'
+  | 'diperbaiki'
+  | null;
 
 interface BulkFilterConfirmationState {
   status: 'diterima' | 'ditolak';
@@ -85,15 +104,26 @@ export const AnomalyEditorTab: React.FC = () => {
   // State Slide-over Drawer Audit Log (F-20)
   const [isAuditDrawerOpen, setIsAuditDrawerOpen] = useState(false);
 
+  // State Slide-over Drawer Riwayat Pemrosesan (Penyesuaian Wajib butir e)
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+
+  // State Modal Konfirmasi Dua Langkah Apply Review (F-17)
+  const [isApplyReviewModalOpen, setIsApplyReviewModalOpen] = useState(false);
+
+  // State Banner Hasil Penerapan Review Terakhir (termasuk peringatan perbedaan jumlah pratinjau vs konfirmasi)
+  const [lastApplyReviewResult, setLastApplyReviewResult] =
+    useState<ApplyReviewSuccessPayload | null>(null);
+
   // State Ringkasan Anomali (F-13)
   const [summaryGroupBy, setSummaryGroupBy] =
     useState<AnomalyGroupBy>('jenis');
   const [summaryDataKolom, setSummaryDataKolom] = useState<string>('');
 
   // State Filter Tabel & Anomali (F-14)
+  // Mendukung pemisahan Ditolak (aktif) vs Ditolak (sudah dibuang) sesuai Penyesuaian Wajib butir c
   const [filterJenis, setFilterJenis] = useState<string | null>(null);
   const [filterKolom, setFilterKolom] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<AnomalyStatus | null>(null);
+  const [filterStatus, setFilterStatus] = useState<FilterStatusOption>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // State Paginasi Grid (50 atau 100 baris per halaman)
@@ -176,6 +206,17 @@ export const AnomalyEditorTab: React.FC = () => {
 
   const isOver2000Anomalies = Boolean(boundedAnomaliesData?.isTruncated);
 
+  // Konversi filterStatus UI ke parameter status API backend ('ditolak_aktif' & 'ditolak_dibuang' -> 'ditolak')
+  const backendStatusFilter: AnomalyStatus | null = useMemo(() => {
+    if (
+      filterStatus === 'ditolak_aktif' ||
+      filterStatus === 'ditolak_dibuang'
+    ) {
+      return 'ditolak';
+    }
+    return filterStatus;
+  }, [filterStatus]);
+
   // 4b. Query Paginasi Server-side jika total anomali > 2.000
   const {
     data: serverPagedAnomalies,
@@ -187,14 +228,14 @@ export const AnomalyEditorTab: React.FC = () => {
       'server-paged',
       filterJenis,
       filterKolom,
-      filterStatus,
+      backendStatusFilter,
       serverAnomalyPage,
     ],
     queryFn: () =>
       getAnomalyItems(datasetId, {
         jenis: filterJenis,
         kolom: filterKolom,
-        status: filterStatus,
+        status: backendStatusFilter,
         limit: serverAnomalyPageSize,
         offset: (serverAnomalyPage - 1) * serverAnomalyPageSize,
       }),
@@ -215,6 +256,18 @@ export const AnomalyEditorTab: React.FC = () => {
     enabled: Boolean(datasetId) && hasCleanVersion,
   });
 
+  // 5b. Query Riwayat Pemrosesan Dataset (GET /datasets/{id}/history) untuk Drawer Riwayat Pemrosesan (Butir e)
+  const {
+    data: historyLogs = [],
+    isLoading: isHistoryLoading,
+    isFetching: isHistoryFetching,
+    refetch: refetchHistory,
+  } = useQuery({
+    queryKey: ['dataset-history', datasetId],
+    queryFn: () => getDatasetHistory(datasetId),
+    enabled: Boolean(datasetId),
+  });
+
   // 6. Query Endpoint Terpadu di balik saklar B-05
   const { data: unifiedReviewData } = useQuery({
     queryKey: [
@@ -222,7 +275,7 @@ export const AnomalyEditorTab: React.FC = () => {
       datasetId,
       currentPage,
       pageSize,
-      filterStatus,
+      backendStatusFilter,
       filterJenis,
       filterKolom,
       searchQuery,
@@ -231,7 +284,7 @@ export const AnomalyEditorTab: React.FC = () => {
       getUnifiedDataReview(datasetId, {
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
-        status: filterStatus,
+        status: backendStatusFilter,
         jenis: filterJenis,
         kolom: filterKolom,
         q: searchQuery || null,
@@ -312,7 +365,185 @@ export const AnomalyEditorTab: React.FC = () => {
     return set;
   }, [cleanReport, cleanPreviewData]);
 
-  // PEMETAAN POSISI BARIS KE ROW_INDEX & UJI SILANG ANOMALI (Butir a)
+  // 8. Query Pratinjau Apply Review (POST /datasets/{id}/apply-review?preview=true)
+  // Bebas efek samping di backend (review.py baris 57-68). Dipakai untuk:
+  // - Menentukan status tombol "Terapkan Hasil Review" (aktif hanya jika baris_dibuang > 0)
+  // - Mengklasifikasikan anomali Ditolak (aktif) vs Ditolak (sudah dibuang) sesuai Penyesuaian Wajib butir c
+  // - Mengisi angka pratinjau baris sebelum & sesudah pada Panel Perbandingan di bawah grid
+  const cumulativeRejectedCount =
+    dataset?.anomali?.ditolak ?? anomalySummary?.per_status?.ditolak ?? 0;
+
+  const {
+    data: applyPreviewQueryResult,
+    isLoading: isApplyPreviewLoading,
+    isFetching: isApplyPreviewFetching,
+  } = useQuery({
+    queryKey: [
+      'dataset-apply-review-preview',
+      datasetId,
+      dataset?.versi_bersih,
+      cumulativeRejectedCount,
+    ],
+    queryFn: async (): Promise<{
+      data: ApplyReviewResponse | null;
+      errorStatus: number | null;
+      errorDetail: string | null;
+    }> => {
+      try {
+        const res = await postApplyReview(datasetId, true);
+        return { data: res, errorStatus: null, errorDetail: null };
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: { status?: number; data?: { detail?: string } };
+          localizedMessage?: string;
+        };
+        return {
+          data: null,
+          errorStatus: axiosErr?.response?.status ?? null,
+          errorDetail:
+            axiosErr?.response?.data?.detail ??
+            axiosErr?.localizedMessage ??
+            null,
+        };
+      }
+    },
+    enabled:
+      Boolean(datasetId) && hasCleanVersion && cumulativeRejectedCount > 0,
+    staleTime: 1000 * 10, // Cache pendek 10 detik
+    retry: false,
+  });
+
+  // Semua item anomali yang telah dimuat (maksimal 2.000 item)
+  const allLoadedAnomalies = useMemo(
+    () => boundedAnomaliesData?.items || [],
+    [boundedAnomaliesData]
+  );
+
+  /**
+   * PENYESUAIAN WAJIB BUTIR c:
+   * Klasifikasi Anomali Ditolak AKTIF vs SUDAH DIBUANG dari respons pratinjau apply-review:
+   * - Jika cumulativeRejectedCount === 0: tidak ada anomali ditolak sama sekali (exact_from_preview).
+   * - Jika pratinjau sukses dan detail_terpotong === false:
+   *   anomali ditolak dianggap AKTIF jika row_index-nya ada di detail_baris_dibuang;
+   *   selain itu dianggap SUDAH DIBUANG.
+   * - Jika pratinjau mengembalikan 400 "Tidak ada baris dengan anomali berstatus 'ditolak' yang perlu diterapkan.":
+   *   semua anomali ditolak berstatus SUDAH DIBUANG (all_already_dropped).
+   * - Jika pratinjau mengembalikan 400 "Semua baris akan terbuang. Periksa kembali status anomali.":
+   *   ini adalah pemblokiran 100% baris (blocked_all_rows), BUKAN "sudah dibuang".
+   * - Jika detail_terpotong === true atau pesan error tidak dikenali / sedang dimuat:
+   *   klasifikasi tidak bisa dipastikan (uncertain) -> jangan menonaktifkan aksi pada baris yang tidak pasti
+   *   dan tampilkan catatan netral.
+   */
+  const rejectedClassification: RejectedAnomaliesClassification = useMemo(() => {
+    const activeSet = new Set<number>();
+    const droppedSet = new Set<number>();
+
+    const allRejectedRowIndices = new Set<number>();
+    for (const a of allLoadedAnomalies) {
+      if (a.status === 'ditolak') {
+        allRejectedRowIndices.add(a.row_index);
+      }
+    }
+
+    if (cumulativeRejectedCount === 0) {
+      return {
+        mode: 'exact_from_preview',
+        activeRejectedRowIndices: activeSet,
+        alreadyDroppedRowIndices: droppedSet,
+        isCertain: true,
+        message: null,
+      };
+    }
+
+    if (!applyPreviewQueryResult) {
+      return {
+        mode: 'uncertain',
+        activeRejectedRowIndices: activeSet,
+        alreadyDroppedRowIndices: droppedSet,
+        isCertain: false,
+        message:
+          'Sedang memeriksa status baris anomali ditolak terhadap versi data bersih aktif...',
+      };
+    }
+
+    const { data, errorStatus, errorDetail } = applyPreviewQueryResult;
+
+    // Cabang 1: Pratinjau mengembalikan 200 OK
+    if (data) {
+      for (const item of data.detail_baris_dibuang) {
+        activeSet.add(item.row_index);
+      }
+
+      if (!data.detail_terpotong) {
+        for (const rIdx of allRejectedRowIndices) {
+          if (!activeSet.has(rIdx)) {
+            droppedSet.add(rIdx);
+          }
+        }
+        return {
+          mode: 'exact_from_preview',
+          activeRejectedRowIndices: activeSet,
+          alreadyDroppedRowIndices: droppedSet,
+          isCertain: true,
+          message: null,
+        };
+      }
+
+      // Jika detail_terpotong === true (> 200 baris akan dibuang), kita hanya yakin pada 200 baris pertama di activeSet
+      return {
+        mode: 'uncertain',
+        activeRejectedRowIndices: activeSet,
+        alreadyDroppedRowIndices: droppedSet,
+        isCertain: false,
+        message:
+          'Terdapat lebih dari 200 baris yang akan dibuang (detail_terpotong=true). Klasifikasi baris yang sudah dibuang pada versi sebelumnya tidak ditampilkan secara parsial; seluruh aksi kurasi tetap dibuka.',
+      };
+    }
+
+    // Cabang 2: Pratinjau mengembalikan HTTP 400
+    const lowerDetail = (errorDetail || '').toLowerCase();
+    if (
+      errorStatus === 400 &&
+      lowerDetail.includes('tidak ada baris') &&
+      lowerDetail.includes('ditolak')
+    ) {
+      for (const rIdx of allRejectedRowIndices) {
+        droppedSet.add(rIdx);
+      }
+      return {
+        mode: 'all_already_dropped',
+        activeRejectedRowIndices: activeSet,
+        alreadyDroppedRowIndices: droppedSet,
+        isCertain: true,
+        message: null,
+      };
+    }
+
+    if (
+      errorStatus === 400 &&
+      lowerDetail.includes('semua baris akan terbuang')
+    ) {
+      return {
+        mode: 'blocked_all_rows',
+        activeRejectedRowIndices: activeSet,
+        alreadyDroppedRowIndices: droppedSet,
+        isCertain: false,
+        message:
+          'Peringatan: Seluruh baris data bersih saat ini memiliki anomali berstatus Ditolak (100% baris akan terbuang). Server memblokir pembuangan seluruh baris; silakan ubah minimal satu baris ke status Diterima, Diperbaiki, atau Pending.',
+      };
+    }
+
+    return {
+      mode: 'uncertain',
+      activeRejectedRowIndices: activeSet,
+      alreadyDroppedRowIndices: droppedSet,
+      isCertain: false,
+      message:
+        'Klasifikasi anomali ditolak aktif vs sudah dibuang belum dapat diverifikasi dari server. Seluruh tombol aksi kurasi tetap diaktifkan.',
+    };
+  }, [allLoadedAnomalies, cumulativeRejectedCount, applyPreviewQueryResult]);
+
+  // PEMETAAN POSISI BARIS KE ROW_INDEX & UJI SILANG ANOMALI (Butir a & Penyesuaian Wajib butir d)
   const rowMapping = useMemo(() => {
     if (!hasCleanVersion || !cleanPreviewData || !boundedAnomaliesData) {
       return null;
@@ -332,6 +563,7 @@ export const AnomalyEditorTab: React.FC = () => {
         )} anomali). Menampilkan Mode Daftar Anomali dengan filter dan paginasi server.`,
         verifiedRows: [],
         rowByRowIndex: {},
+        droppedRowIndices: [],
       };
     }
 
@@ -341,13 +573,16 @@ export const AnomalyEditorTab: React.FC = () => {
         ? cleanPreviewData.row_indices
         : undefined,
       rawPreviewRows: rawPreviewData?.preview,
-      barisMentah: cleanReport?.baris_awal ?? dataset?.baris_mentah ?? 0,
-      barisBersih: cleanReport?.baris_akhir ?? dataset?.baris_bersih ?? 0,
+      barisMentah: dataset?.baris_mentah ?? cleanReport?.baris_awal ?? 0,
+      // Penyesuaian Wajib butir d: Pakai dataset.baris_bersih sebagai sumber jumlah baris bersih terkini
+      barisBersih: dataset?.baris_bersih ?? cleanReport?.baris_akhir ?? 0,
       duplikatDihapus: cleanReport?.duplikat_dihapus ?? 0,
       jumlahReviewDiterapkan: dataset?.jumlah_review_diterapkan ?? 0,
       kolomDiubahKeNumerik: cleanReport?.kolom_diubah_ke_numerik ?? [],
       anomalies: boundedAnomaliesData.items,
       edits: editsResponse?.data ?? [],
+      provenAlreadyDroppedRowIndices:
+        rejectedClassification.alreadyDroppedRowIndices,
     });
   }, [
     hasCleanVersion,
@@ -357,9 +592,10 @@ export const AnomalyEditorTab: React.FC = () => {
     dataset,
     boundedAnomaliesData,
     editsResponse,
+    rejectedClassification.alreadyDroppedRowIndices,
   ]);
 
-  // Helper Penyegaran Seluruh Query Terkait (Tabel, Ringkasan Anomali, Header Workspace, Tab 1, Beranda)
+  // Helper Penyegaran Seluruh Query Terkait (Tabel, Ringkasan Anomali, Pratinjau Apply Review, Header Workspace, Tab 1, Beranda)
   const invalidateAllRelatedQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
@@ -388,6 +624,9 @@ export const AnomalyEditorTab: React.FC = () => {
       }),
       queryClient.invalidateQueries({
         queryKey: ['dataset-unified-review', datasetId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['dataset-apply-review-preview', datasetId],
       }),
       queryClient.invalidateQueries({ queryKey: ['datasets'] }),
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
@@ -527,12 +766,18 @@ export const AnomalyEditorTab: React.FC = () => {
     cleanMutation.mutate(false);
   };
 
-  // Hitung rincian jumlah anomali per jenis, kolom, dan status untuk pill filter
-  const allLoadedAnomalies = useMemo(
-    () => boundedAnomaliesData?.items || [],
-    [boundedAnomaliesData]
-  );
+  // Helper apakah suatu anomali terbukti SUDAH DIBUANG pada versi sebelumnya (Penyesuaian Wajib butir c)
+  const isAnomalyAlreadyDropped = (anom: {
+    status: AnomalyStatus;
+    row_index: number;
+  }): boolean => {
+    return (
+      anom.status === 'ditolak' &&
+      rejectedClassification.alreadyDroppedRowIndices.has(anom.row_index)
+    );
+  };
 
+  // Hitung rincian jumlah anomali per jenis, kolom, dan status untuk pill filter
   const countsByJenis = useMemo(() => {
     const map: Record<string, number> = {
       outlier: 0,
@@ -552,15 +797,60 @@ export const AnomalyEditorTab: React.FC = () => {
     return map;
   }, [cleanReport, allLoadedAnomalies]);
 
+  // Hitung pemisahan Ditolak (aktif) vs Ditolak (sudah dibuang) sesuai Penyesuaian Wajib butir c
+  const splitRejectedCounts = useMemo(() => {
+    const previewRes = applyPreviewQueryResult?.data;
+    if (rejectedClassification.mode === 'all_already_dropped') {
+      return {
+        ditolakAktif: 0,
+        ditolakSudahDibuang: cumulativeRejectedCount,
+      };
+    }
+    if (previewRes) {
+      const aktif = previewRes.anomali_ditolak_diterapkan;
+      const sudahDibuang = Math.max(0, cumulativeRejectedCount - aktif);
+      return {
+        ditolakAktif: aktif,
+        ditolakSudahDibuang: sudahDibuang,
+      };
+    }
+    let aktifCount = 0;
+    let sudahDibuangCount = 0;
+    for (const a of allLoadedAnomalies) {
+      if (a.status === 'ditolak') {
+        if (rejectedClassification.alreadyDroppedRowIndices.has(a.row_index)) {
+          sudahDibuangCount += 1;
+        } else {
+          aktifCount += 1;
+        }
+      }
+    }
+    return {
+      ditolakAktif: aktifCount,
+      ditolakSudahDibuang: sudahDibuangCount,
+    };
+  }, [
+    applyPreviewQueryResult,
+    rejectedClassification,
+    cumulativeRejectedCount,
+    allLoadedAnomalies,
+  ]);
+
   const countsByStatus = useMemo(() => {
     return {
-      pending: dataset?.anomali?.pending ?? anomalySummary?.per_status?.pending ?? 0,
-      diterima: dataset?.anomali?.diterima ?? anomalySummary?.per_status?.diterima ?? 0,
-      ditolak: dataset?.anomali?.ditolak ?? anomalySummary?.per_status?.ditolak ?? 0,
+      pending:
+        dataset?.anomali?.pending ?? anomalySummary?.per_status?.pending ?? 0,
+      diterima:
+        dataset?.anomali?.diterima ?? anomalySummary?.per_status?.diterima ?? 0,
+      ditolak: cumulativeRejectedCount,
+      ditolakAktif: splitRejectedCounts.ditolakAktif,
+      ditolakSudahDibuang: splitRejectedCounts.ditolakSudahDibuang,
       diperbaiki:
-        dataset?.anomali?.diperbaiki ?? anomalySummary?.per_status?.diperbaiki ?? 0,
+        dataset?.anomali?.diperbaiki ??
+        anomalySummary?.per_status?.diperbaiki ??
+        0,
     };
-  }, [dataset, anomalySummary]);
+  }, [dataset, anomalySummary, cumulativeRejectedCount, splitRejectedCounts]);
 
   const totalAnomaliesCount = useMemo(() => {
     return (
@@ -571,6 +861,47 @@ export const AnomalyEditorTab: React.FC = () => {
     );
   }, [countsByStatus]);
 
+  // Status tombol "Terapkan Hasil Review" ditentukan dari pratinjau (baris_dibuang > 0),
+  // BUKAN dari hitungan ditolak kumulatif (Penyesuaian Wajib butir c)
+  const applyPreviewData = applyPreviewQueryResult?.data ?? null;
+  const activeRowsToDropCount = applyPreviewData?.baris_dibuang ?? 0;
+  const isBlocked100PercentDrop =
+    rejectedClassification.mode === 'blocked_all_rows';
+  const canApplyReview =
+    hasCleanVersion && activeRowsToDropCount > 0 && !isBlocked100PercentDrop;
+
+  const applyButtonDisabledReason = useMemo(() => {
+    if (!hasCleanVersion) {
+      return 'Jalankan pembersihan otomatis terlebih dahulu sebelum menerapkan hasil review.';
+    }
+    if (isApplyPreviewLoading || isApplyPreviewFetching) {
+      return 'Sedang memeriksa dampak pratinjau penerapan hasil review dari server...';
+    }
+    if (isBlocked100PercentDrop) {
+      return 'Server memblokir pembuangan 100% baris data bersih. Ubah minimal satu baris ke status Diterima, Diperbaiki, atau Pending.';
+    }
+    if (
+      cumulativeRejectedCount > 0 &&
+      rejectedClassification.mode === 'all_already_dropped'
+    ) {
+      return `Seluruh anomali Ditolak (${formatNumberId(
+        cumulativeRejectedCount,
+        0
+      )} anomali) sudah dibuang pada versi sebelumnya (v${
+        dataset?.versi_bersih ?? 1
+      }). Tidak ada baris ditolak baru untuk diterapkan.`;
+    }
+    return 'Belum ada baris dengan anomali berstatus Ditolak (aktif) yang perlu dibuang pada versi data bersih saat ini.';
+  }, [
+    hasCleanVersion,
+    isApplyPreviewLoading,
+    isApplyPreviewFetching,
+    isBlocked100PercentDrop,
+    cumulativeRejectedCount,
+    rejectedClassification.mode,
+    dataset?.versi_bersih,
+  ]);
+
   // Daftar kolom yang memiliki anomali untuk pill filter kolom
   const anomalyColumnsList = useMemo(() => {
     const set = new Set<string>();
@@ -580,16 +911,44 @@ export const AnomalyEditorTab: React.FC = () => {
     return Array.from(set);
   }, [allLoadedAnomalies]);
 
+  // Helper pencocokan satu anomali terhadap filterStatus (termasuk ditolak_aktif vs ditolak_dibuang)
+  const matchesStatusFilter = (anom: {
+    status: AnomalyStatus;
+    row_index: number;
+  }): boolean => {
+    if (!filterStatus) return true;
+    if (filterStatus === 'ditolak_aktif') {
+      return (
+        anom.status === 'ditolak' &&
+        !rejectedClassification.alreadyDroppedRowIndices.has(anom.row_index)
+      );
+    }
+    if (filterStatus === 'ditolak_dibuang') {
+      return (
+        anom.status === 'ditolak' &&
+        rejectedClassification.alreadyDroppedRowIndices.has(anom.row_index)
+      );
+    }
+    return anom.status === filterStatus;
+  };
+
   // Filter daftar anomali (untuk Mode Daftar Anomali & perhitungan Bulk Filter)
   const filteredAnomaliesList = useMemo(() => {
     if (isOver2000Anomalies) {
-      return serverPagedAnomalies?.data || [];
+      const serverData = serverPagedAnomalies?.data || [];
+      if (
+        filterStatus === 'ditolak_aktif' ||
+        filterStatus === 'ditolak_dibuang'
+      ) {
+        return serverData.filter((a) => matchesStatusFilter(a));
+      }
+      return serverData;
     }
     const q = searchQuery.trim().toLowerCase();
     return allLoadedAnomalies.filter((a) => {
       if (filterJenis && a.jenis !== filterJenis) return false;
       if (filterKolom && a.kolom !== filterKolom) return false;
-      if (filterStatus && a.status !== filterStatus) return false;
+      if (!matchesStatusFilter(a)) return false;
       if (q) {
         const matchRow = String(a.baris_di_file_asli).includes(q);
         const matchCol = a.kolom.toLowerCase().includes(q);
@@ -608,6 +967,7 @@ export const AnomalyEditorTab: React.FC = () => {
       }
       return true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOver2000Anomalies,
     serverPagedAnomalies,
@@ -617,9 +977,12 @@ export const AnomalyEditorTab: React.FC = () => {
     filterStatus,
     searchQuery,
     rowMapping,
+    rejectedClassification,
   ]);
 
   // Filter baris grid terverifikasi (untuk Mode Grid Data Terpadu)
+  // Catatan: Baris yang sudah dibuang tidak ada lagi di clean-preview (grid data bersih aktif).
+  // Jika pengguna memilih filter 'ditolak_dibuang', kita tampilkan daftar anomali yang sudah dibuang tersebut.
   const filteredGridRows: VerifiedCleanRow[] = useMemo(() => {
     if (!rowMapping || !rowMapping.isValid) return [];
     const q = searchQuery.trim().toLowerCase();
@@ -632,7 +995,7 @@ export const AnomalyEditorTab: React.FC = () => {
         const hasMatchingAnomaly = rowAnomalies.some((a) => {
           if (filterJenis && a.jenis !== filterJenis) return false;
           if (filterKolom && a.kolom !== filterKolom) return false;
-          if (filterStatus && a.status !== filterStatus) return false;
+          if (!matchesStatusFilter(a)) return false;
           return true;
         });
         if (!hasMatchingAnomaly) return false;
@@ -653,7 +1016,15 @@ export const AnomalyEditorTab: React.FC = () => {
 
       return true;
     });
-  }, [rowMapping, filterJenis, filterKolom, filterStatus, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rowMapping,
+    filterJenis,
+    filterKolom,
+    filterStatus,
+    searchQuery,
+    rejectedClassification,
+  ]);
 
   // Baris Grid pada halaman aktif
   const totalGridPages = Math.max(
@@ -687,13 +1058,14 @@ export const AnomalyEditorTab: React.FC = () => {
     pageSize,
   ]);
 
-  // Daftar ID anomali yang dapat dicentang (status !== 'diperbaiki') pada halaman yang sedang tampil
+  // Daftar ID anomali yang dapat dicentang pada halaman yang sedang tampil:
+  // Status !== 'diperbaiki' DAN bukan anomali ditolak yang SUDAH DIBUANG (Penyesuaian Wajib butir c)
   const selectableAnomalyIdsOnPage = useMemo(() => {
-    if (rowMapping?.isValid) {
+    if (rowMapping?.isValid && filterStatus !== 'ditolak_dibuang') {
       const ids: number[] = [];
       for (const row of pagedGridRows) {
         for (const a of Object.values(row.anomaliesByCol)) {
-          if (a.status !== 'diperbaiki') {
+          if (a.status !== 'diperbaiki' && !isAnomalyAlreadyDropped(a)) {
             ids.push(a.id);
           }
         }
@@ -701,9 +1073,16 @@ export const AnomalyEditorTab: React.FC = () => {
       return ids;
     }
     return pagedAnomaliesList
-      .filter((a) => a.status !== 'diperbaiki')
+      .filter((a) => a.status !== 'diperbaiki' && !isAnomalyAlreadyDropped(a))
       .map((a) => a.id);
-  }, [rowMapping, pagedGridRows, pagedAnomaliesList]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rowMapping,
+    filterStatus,
+    pagedGridRows,
+    pagedAnomaliesList,
+    rejectedClassification,
+  ]);
 
   const isAllPageSelected =
     selectableAnomalyIdsOnPage.length > 0 &&
@@ -739,19 +1118,26 @@ export const AnomalyEditorTab: React.FC = () => {
     }
   };
 
-  // Siapkan konfirmasi Aksi Massal Berdasarkan Filter (Butir f)
+  // Siapkan konfirmasi Aksi Massal Berdasarkan Filter (Butir f & Penyesuaian Wajib butir c:
+  // Hanya mengubah anomali berstatus 'pending' dan TIDAK pernah menyertakan anomali yang SUDAH DIBUANG)
   const handlePrepareBulkByFilter = (targetStatus: 'diterima' | 'ditolak') => {
     const matchingPending = allLoadedAnomalies.filter((a) => {
       if (a.status !== 'pending') return false;
+      if (rejectedClassification.alreadyDroppedRowIndices.has(a.row_index)) {
+        return false;
+      }
       if (filterJenis && a.jenis !== filterJenis) return false;
       if (filterKolom && a.kolom !== filterKolom) return false;
       return true;
     });
 
-    const parts: string[] = ['Status saat ini: Pending'];
+    const parts: string[] = [
+      'Status saat ini: Pending (anomali yang sudah dibuang atau diperbaiki tidak disertakan)',
+    ];
     if (filterJenis) parts.push(`Jenis: ${filterJenis}`);
     if (filterKolom) parts.push(`Kolom: ${filterKolom}`);
-    if (!filterJenis && !filterKolom) parts.push('Cakupan: Seluruh anomali pending pada dataset ini');
+    if (!filterJenis && !filterKolom)
+      parts.push('Cakupan: Seluruh anomali pending aktif pada dataset ini');
 
     setBulkFilterConfirm({
       status: targetStatus,
@@ -857,10 +1243,77 @@ export const AnomalyEditorTab: React.FC = () => {
         </div>
       )}
 
-      {/* TOOLBAR ATAS TAB 2: Aksi Tunggal Pembersihan, Ringkasan Anomali, Aksi Massal, Audit Log, & Apply Review (Nonaktif Fase 4) */}
+      {/* Banner Hasil Penerapan Review Terakhir (termasuk Peringatan Perbedaan Jumlah Pratinjau vs Konfirmasi) */}
+      {lastApplyReviewResult && (
+        <div
+          role="status"
+          className={`p-4 rounded-card border flex items-start justify-between gap-3 ${
+            lastApplyReviewResult.hasPostExecutionDrift
+              ? 'bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark border-anomaly-warning-text-light/40 dark:border-anomaly-warning-text-dark/40 text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark'
+              : 'bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark border-anomaly-success-text-light/30 dark:border-anomaly-success-text-dark/40 text-anomaly-success-text-light dark:text-anomaly-success-text-dark'
+          }`}
+        >
+          <div className="flex items-start gap-2.5 text-xs sm:text-sm">
+            {lastApplyReviewResult.hasPostExecutionDrift ? (
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="space-y-1">
+              <strong className="font-bold block">
+                Hasil Review Diterapkan ke Versi Bersih v
+                {lastApplyReviewResult.executionResponse.versi_baru ??
+                  lastApplyReviewResult.executionResponse.versi_lama + 1}
+              </strong>
+              <p className="tabular-numbers">
+                Berhasil membuang{' '}
+                <strong className="font-mono">
+                  {formatNumberId(
+                    lastApplyReviewResult.executionResponse.baris_dibuang,
+                    0
+                  )}{' '}
+                  baris
+                </strong>{' '}
+                yang memiliki anomali berstatus Ditolak (dari{' '}
+                <strong className="font-mono">
+                  {formatNumberId(
+                    lastApplyReviewResult.executionResponse.baris_sebelum,
+                    0
+                  )}
+                </strong>{' '}
+                menjadi{' '}
+                <strong className="font-mono">
+                  {formatNumberId(
+                    lastApplyReviewResult.executionResponse.baris_sesudah,
+                    0
+                  )}{' '}
+                  baris bersih
+                </strong>
+                ).
+              </p>
+              {lastApplyReviewResult.hasPostExecutionDrift &&
+                lastApplyReviewResult.driftDescription && (
+                  <p className="font-semibold pt-1">
+                    {lastApplyReviewResult.driftDescription}
+                  </p>
+                )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastApplyReviewResult(null)}
+            aria-label="Tutup ringkasan penerapan review"
+            className="p-1 rounded-button hover:bg-surface-light/40 dark:hover:bg-surface-dark/40"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* TOOLBAR ATAS TAB 2: Aksi Tunggal Pembersihan, Ringkasan Anomali, Aksi Massal, Riwayat Pemrosesan, Audit Log, & Apply Review (F-17) */}
       <div className="p-4 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Kelompok Kiri: Satu-satunya tombol pembersihan + Lencana Total Anomali */}
+          {/* Kelompok Kiri: Satu-satunya tombol pembersihan + Lencana Total Anomali (dengan pemisahan Ditolak Aktif vs Sudah Dibuang) */}
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="button"
@@ -881,18 +1334,25 @@ export const AnomalyEditorTab: React.FC = () => {
             </Button>
 
             {hasCleanVersion && (
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-button bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark border border-anomaly-warning-text-light/25 dark:border-anomaly-warning-text-dark/30 text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark text-xs font-semibold min-h-control">
+              <div className="inline-flex flex-wrap items-center gap-2 px-3.5 py-2 rounded-button bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark border border-anomaly-warning-text-light/25 dark:border-anomaly-warning-text-dark/30 text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark text-xs font-semibold min-h-control">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span className="tabular-numbers">
                   <strong>{formatNumberId(totalAnomaliesCount, 0)}</strong>{' '}
-                  anomali terdeteksi ({formatNumberId(countsByStatus.pending, 0)}{' '}
-                  pending)
+                  anomali ({formatNumberId(countsByStatus.pending, 0)} pending •{' '}
+                  {formatNumberId(countsByStatus.ditolakAktif, 0)} ditolak aktif
+                  {countsByStatus.ditolakSudahDibuang > 0
+                    ? ` • ${formatNumberId(
+                        countsByStatus.ditolakSudahDibuang,
+                        0
+                      )} ditolak sudah dibuang`
+                    : ''}
+                  )
                 </span>
               </div>
             )}
           </div>
 
-          {/* Kelompok Kanan: Aksi Massal Checkbox, Tombol Drawer Audit Log (F-20), & Tombol Apply Review Nonaktif (Fase 4) */}
+          {/* Kelompok Kanan: Aksi Massal Checkbox, Riwayat Pemrosesan (Butir e), Drawer Audit Log (F-20), & Tombol Apply Review (F-17) */}
           <div className="flex flex-wrap items-center gap-2.5">
             {hasCleanVersion && (
               <>
@@ -914,7 +1374,8 @@ export const AnomalyEditorTab: React.FC = () => {
                 >
                   <Check className="w-4 h-4" />
                   <span>
-                    Terima Terpilih ({formatNumberId(selectedAnomalyIds.length, 0)})
+                    Terima Terpilih (
+                    {formatNumberId(selectedAnomalyIds.length, 0)})
                   </span>
                 </button>
 
@@ -936,7 +1397,21 @@ export const AnomalyEditorTab: React.FC = () => {
                 >
                   <X className="w-4 h-4" />
                   <span>
-                    Tolak Terpilih ({formatNumberId(selectedAnomalyIds.length, 0)})
+                    Tolak Terpilih (
+                    {formatNumberId(selectedAnomalyIds.length, 0)})
+                  </span>
+                </button>
+
+                {/* Tombol Pembuka Drawer Riwayat Pemrosesan (Penyesuaian Wajib butir e) */}
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(true)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark hover:bg-header-light dark:hover:bg-header-dark transition-colors min-h-control whitespace-nowrap"
+                >
+                  <Clock className="w-4 h-4 text-brand-cyan" />
+                  <span>Riwayat Pemrosesan</span>
+                  <span className="px-2 py-0.5 rounded-full font-mono font-bold tabular-numbers bg-header-light dark:bg-header-dark text-text-secondary-light dark:text-text-secondary-dark border border-border-light dark:border-border-dark">
+                    {formatNumberId(historyLogs.length, 0)}
                   </span>
                 </button>
 
@@ -955,31 +1430,52 @@ export const AnomalyEditorTab: React.FC = () => {
               </>
             )}
 
-            {/* Tombol Terapkan Hasil Review (Apply Review) - Ditampilkan Nonaktif karena Cakupan Fase 4 */}
-            <div className="relative group inline-block">
-              <button
+            {/* Tombol Terapkan Hasil Review (Apply Review - F-17)
+                Status aktif/nonaktif ditentukan dari pratinjau (baris_dibuang > 0), bukan dari hitungan ditolak kumulatif (Butir c) */}
+            {canApplyReview ? (
+              <Button
                 type="button"
-                aria-disabled="true"
-                aria-describedby="tooltip-apply-review-fase4"
-                onClick={(e) => e.preventDefault()}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control whitespace-nowrap"
+                variant="primary"
+                icon={<CheckCircle2 className="w-4 h-4" />}
+                onClick={() => setIsApplyReviewModalOpen(true)}
+                className="whitespace-nowrap"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>
-                  Terapkan Hasil Review
-                  {dataset?.versi_bersih
-                    ? ` (v${dataset.versi_bersih} → v${dataset.versi_bersih + 1})`
-                    : ''}
-                </span>
-              </button>
-              <div
-                id="tooltip-apply-review-fase4"
-                role="tooltip"
-                className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-popover bg-surface-dark text-text-primary-dark border border-border-dark text-xs font-medium whitespace-nowrap z-30 shadow-lg pointer-events-none"
-              >
-                Tersedia pada Fase 4 (Modal Konfirmasi Dua Langkah & Tabel Diff Apply Review)
+                Terapkan Hasil Review
+                {dataset?.versi_bersih
+                  ? ` (v${dataset.versi_bersih} → v${dataset.versi_bersih + 1})`
+                  : ''}
+                {activeRowsToDropCount > 0
+                  ? ` • -${formatNumberId(activeRowsToDropCount, 0)} Baris`
+                  : ''}
+              </Button>
+            ) : (
+              <div className="relative group inline-block">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby="tooltip-apply-review-disabled"
+                  onClick={(e) => e.preventDefault()}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control whitespace-nowrap"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    Terapkan Hasil Review
+                    {dataset?.versi_bersih
+                      ? ` (v${dataset.versi_bersih} → v${
+                          dataset.versi_bersih + 1
+                        })`
+                      : ''}
+                  </span>
+                </button>
+                <div
+                  id="tooltip-apply-review-disabled"
+                  role="tooltip"
+                  className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 absolute bottom-full right-0 mb-2 px-3 py-2 rounded-popover bg-surface-dark text-text-primary-dark border border-border-dark text-xs font-medium max-w-sm z-30 shadow-lg pointer-events-none"
+                >
+                  {applyButtonDisabledReason}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -1144,16 +1640,34 @@ export const AnomalyEditorTab: React.FC = () => {
                   type="button"
                   onClick={() =>
                     setFilterStatus((prev) =>
-                      prev === 'ditolak' ? null : 'ditolak'
+                      prev === 'ditolak_aktif' ? null : 'ditolak_aktif'
                     )
                   }
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors min-h-[34px] tabular-numbers ${
-                    filterStatus === 'ditolak'
+                    filterStatus === 'ditolak_aktif'
                       ? 'bg-anomaly-danger-text-light text-white dark:bg-anomaly-danger-text-dark dark:text-canvas-dark'
                       : 'bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark'
                   }`}
                 >
-                  Ditolak ({formatNumberId(countsByStatus.ditolak, 0)})
+                  Ditolak (aktif) (
+                  {formatNumberId(countsByStatus.ditolakAktif, 0)})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFilterStatus((prev) =>
+                      prev === 'ditolak_dibuang' ? null : 'ditolak_dibuang'
+                    )
+                  }
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors min-h-[34px] tabular-numbers ${
+                    filterStatus === 'ditolak_dibuang'
+                      ? 'bg-text-primary-light text-surface-light dark:bg-text-primary-dark dark:text-canvas-dark'
+                      : 'bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark'
+                  }`}
+                >
+                  Ditolak (sudah dibuang) (
+                  {formatNumberId(countsByStatus.ditolakSudahDibuang, 0)})
                 </button>
 
                 <button
@@ -1315,6 +1829,8 @@ export const AnomalyEditorTab: React.FC = () => {
             groupBy={summaryGroupBy}
             dataKolom={summaryDataKolom}
             availableColumns={availableColumns}
+            ditolakAktifCount={countsByStatus.ditolakAktif}
+            ditolakSudahDibuangCount={countsByStatus.ditolakSudahDibuang}
             onGroupByChange={(g) => setSummaryGroupBy(g)}
             onDataKolomChange={(k) => setSummaryDataKolom(k)}
             onQuickFilterFromGroup={(g, val) => {
@@ -1322,14 +1838,18 @@ export const AnomalyEditorTab: React.FC = () => {
                 setFilterJenis((prev) => (prev === val ? null : val));
               } else if (g === 'kolom' && val !== '(seluruh baris)') {
                 setFilterKolom((prev) => (prev === val ? null : val));
-              } else if (
-                g === 'status' &&
-                (val === 'pending' ||
+              } else if (g === 'status') {
+                if (val === 'ditolak') {
+                  setFilterStatus((prev) =>
+                    prev === 'ditolak_aktif' ? null : 'ditolak_aktif'
+                  );
+                } else if (
+                  val === 'pending' ||
                   val === 'diterima' ||
-                  val === 'ditolak' ||
-                  val === 'diperbaiki')
-              ) {
-                setFilterStatus((prev) => (prev === val ? null : val));
+                  val === 'diperbaiki'
+                ) {
+                  setFilterStatus((prev) => (prev === val ? null : val));
+                }
               }
             }}
           />
@@ -1377,8 +1897,10 @@ export const AnomalyEditorTab: React.FC = () => {
               </div>
             )}
 
-          {/* CABANG TAMPILAN UTAMA: MODE GRID DATA TERVERIFIKASI vs MODE DAFTAR ANOMALI (FALLBACK AMAN) */}
-          {rowMapping && rowMapping.isValid ? (
+          {/* CABANG TAMPILAN UTAMA: MODE GRID DATA TERVERIFIKASI vs MODE DAFTAR ANOMALI (FALLBACK AMAN ATAU FILTER DITOLAK SUDAH DIBUANG) */}
+          {rowMapping &&
+          rowMapping.isValid &&
+          filterStatus !== 'ditolak_dibuang' ? (
             /* ============================================================================
              * MODE 1: GRID DATA BERSIH TERPADU DENGAN PENANDA WARNA ANOMALI (F-14, F-15)
              * ============================================================================ */
@@ -1846,25 +2368,43 @@ export const AnomalyEditorTab: React.FC = () => {
             </div>
           ) : (
             /* ============================================================================
-             * MODE 2: MODE DAFTAR ANOMALI (FALLBACK AMAN SAAT UJI SILANG GAGAL / > 2.000)
+             * MODE 2: MODE DAFTAR ANOMALI (FALLBACK AMAN SAAT UJI SILANG GAGAL / > 2.000 / FILTER DITOLAK SUDAH DIBUANG)
              * ============================================================================ */
             <div className="space-y-4">
               {/* Banner Penjelasan Mengapa Beralih ke Mode Daftar Anomali */}
-              <div
-                role="alert"
-                className="p-4 rounded-card bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark border border-anomaly-warning-text-light/30 dark:border-anomaly-warning-text-dark/40 text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark flex items-start gap-3"
-              >
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div className="text-xs sm:text-sm space-y-1">
-                  <div className="font-bold">
-                    Mode Daftar Anomali Aktif (Perlindungan Keselamatan Pengenal Baris)
+              {filterStatus === 'ditolak_dibuang' && rowMapping?.isValid ? (
+                <div
+                  role="status"
+                  className="p-4 rounded-card bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark flex items-start gap-3"
+                >
+                  <Info className="w-5 h-5 text-brand-cyan flex-shrink-0 mt-0.5" />
+                  <div className="text-xs sm:text-sm space-y-1">
+                    <div className="font-bold text-text-primary-light dark:text-text-primary-dark">
+                      Menampilkan Arsip Anomali Ditolak yang Barisnya Sudah Dibuang (v
+                      {dataset?.versi_bersih ?? 1})
+                    </div>
+                    <p>
+                      Baris-baris di bawah ini sudah dikeluarkan dari tabel data bersih aktif melalui penerapan hasil review, namun catatannya tetap tersimpan di tabel anomali backend sebagai jejak audit. Aksi kurasi pada baris yang sudah dibuang dinonaktifkan karena pembatalan status tidak mengembalikan baris yang telah terhapus.
+                    </p>
                   </div>
-                  <p>
-                    {rowMapping?.failureReason ||
-                      'Pemetaan baris pratinjau tidak dapat diverifikasi secara 100% pasti. Untuk mencegah kesalahan penimpaan baris, pewarnaan grid dinonaktifkan dan seluruh anomali ditampilkan langsung menggunakan nomor baris asli dari backend.'}
-                  </p>
                 </div>
-              </div>
+              ) : (
+                <div
+                  role="alert"
+                  className="p-4 rounded-card bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark border border-anomaly-warning-text-light/30 dark:border-anomaly-warning-text-dark/40 text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark flex items-start gap-3"
+                >
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs sm:text-sm space-y-1">
+                    <div className="font-bold">
+                      Mode Daftar Anomali Aktif (Perlindungan Keselamatan Pengenal Baris)
+                    </div>
+                    <p>
+                      {rowMapping?.failureReason ||
+                        'Pemetaan baris pratinjau tidak dapat diverifikasi secara 100% pasti. Untuk mencegah kesalahan penimpaan baris, pewarnaan grid dinonaktifkan dan seluruh anomali ditampilkan langsung menggunakan nomor baris asli dari backend.'}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Tabel Mode Daftar Anomali */}
               <div className="rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark overflow-hidden">
@@ -1938,26 +2478,37 @@ export const AnomalyEditorTab: React.FC = () => {
                         </tr>
                       ) : (
                         pagedAnomaliesList.map((anom) => {
+                          const isAlreadyDropped =
+                            isAnomalyAlreadyDropped(anom);
                           const isChecked = selectedAnomalyIds.includes(
                             anom.id
                           );
                           const isEditingThis =
-                            activeEditAnomalyId === anom.id;
+                            activeEditAnomalyId === anom.id &&
+                            !isAlreadyDropped;
                           const isNumericCol = numericColumnsSet.has(
                             anom.kolom
                           );
+                          const droppedTooltipId = `tooltip-dropped-anom-${anom.id}`;
 
                           return (
                             <tr
                               key={anom.id}
-                              className="hover:bg-canvas-light dark:hover:bg-canvas-dark/50 transition-colors"
+                              className={`transition-colors ${
+                                isAlreadyDropped
+                                  ? 'bg-header-light/40 dark:bg-header-dark/30 opacity-85'
+                                  : 'hover:bg-canvas-light dark:hover:bg-canvas-dark/50'
+                              }`}
                             >
                               <td className="py-3 px-4 font-mono text-xs font-bold tabular-numbers whitespace-nowrap align-top">
                                 <div className="flex items-center gap-2.5">
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    disabled={anom.status === 'diperbaiki'}
+                                    disabled={
+                                      anom.status === 'diperbaiki' ||
+                                      isAlreadyDropped
+                                    }
                                     onChange={() =>
                                       handleToggleRowAnomaliesSelection([
                                         anom.id,
@@ -1966,7 +2517,13 @@ export const AnomalyEditorTab: React.FC = () => {
                                     aria-label={`Pilih anomali baris file ${anom.baris_di_file_asli}`}
                                     className="w-4 h-4 rounded-cell-input border-border-light dark:border-border-dark text-brand-primary-light focus:ring-brand-primary-light cursor-pointer disabled:opacity-30"
                                   />
-                                  <span>#{anom.baris_di_file_asli}</span>
+                                  <span
+                                    className={
+                                      isAlreadyDropped ? 'line-through' : ''
+                                    }
+                                  >
+                                    #{anom.baris_di_file_asli}
+                                  </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 font-mono text-xs font-bold whitespace-nowrap align-top text-text-primary-light dark:text-text-primary-dark">
@@ -1978,7 +2535,13 @@ export const AnomalyEditorTab: React.FC = () => {
                                 </span>
                               </td>
                               <td className="py-3 px-4 font-mono text-xs align-top text-text-primary-light dark:text-text-primary-dark">
-                                <div>{anom.alasan}</div>
+                                <div
+                                  className={
+                                    isAlreadyDropped ? 'line-through' : ''
+                                  }
+                                >
+                                  {anom.alasan}
+                                </div>
                                 {isEditingThis && (
                                   <div className="mt-3">
                                     <InlineCellEditorPopover
@@ -2010,12 +2573,21 @@ export const AnomalyEditorTab: React.FC = () => {
                                     <span>Diterima</span>
                                   </span>
                                 )}
-                                {anom.status === 'ditolak' && (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark line-through">
-                                    <X className="w-3.5 h-3.5" />
-                                    <span>Ditolak</span>
-                                  </span>
-                                )}
+                                {anom.status === 'ditolak' &&
+                                  (isAlreadyDropped ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark line-through">
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>
+                                        Sudah dibuang (v
+                                        {dataset?.versi_bersih ?? 1})
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark line-through">
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Ditolak (Aktif)</span>
+                                    </span>
+                                  ))}
                                 {anom.status === 'diperbaiki' && (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-xs font-semibold bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark">
                                     <Edit3 className="w-3.5 h-3.5 text-modified-border-light dark:text-modified-border-dark" />
@@ -2024,90 +2596,135 @@ export const AnomalyEditorTab: React.FC = () => {
                                 )}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap align-top text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  {anom.kolom !== '*' && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setActiveEditAnomalyId((prev) =>
-                                          prev === anom.id ? null : anom.id
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-brand-primary-light/40 dark:border-brand-primary-dark/40 text-brand-primary-light dark:text-brand-primary-dark hover:bg-brand-primary-light/10 min-h-[34px]"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                      <span>
-                                        {isEditingThis ? 'Tutup Edit' : 'Edit'}
-                                      </span>
-                                    </button>
-                                  )}
-
-                                  {anom.status === 'pending' && (
-                                    <>
+                                {isAlreadyDropped ? (
+                                  /* Penyesuaian Wajib butir c: Anomali SUDAH DIBUANG -> aksi Terima, Tolak, Batalkan, dan Edit dinonaktifkan dengan tooltip */
+                                  <div className="relative group inline-flex items-center justify-end gap-1.5">
+                                    {anom.kolom !== '*' && (
                                       <button
                                         type="button"
-                                        disabled={
-                                          singleReviewMutation.isPending
-                                        }
-                                        onClick={() =>
-                                          singleReviewMutation.mutate({
-                                            anomalyId: anom.id,
-                                            status: 'diterima',
-                                          })
-                                        }
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark border border-anomaly-success-text-light/30 min-h-[34px]"
+                                        aria-disabled="true"
+                                        aria-describedby={droppedTooltipId}
+                                        onClick={(e) => e.preventDefault()}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-60 cursor-not-allowed min-h-[34px]"
                                       >
-                                        <Check className="w-3.5 h-3.5" />
-                                        <span>Terima</span>
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span>Edit</span>
                                       </button>
-                                      <button
-                                        type="button"
-                                        disabled={
-                                          singleReviewMutation.isPending
-                                        }
-                                        onClick={() =>
-                                          singleReviewMutation.mutate({
-                                            anomalyId: anom.id,
-                                            status: 'ditolak',
-                                          })
-                                        }
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark border border-anomaly-danger-text-light/30 min-h-[34px]"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                        <span>Tolak</span>
-                                      </button>
-                                    </>
-                                  )}
-
-                                  {(anom.status === 'diterima' ||
-                                    anom.status === 'ditolak') && (
+                                    )}
                                     <button
                                       type="button"
-                                      disabled={singleReviewMutation.isPending}
-                                      onClick={() =>
-                                        singleReviewMutation.mutate({
-                                          anomalyId: anom.id,
-                                          status: 'pending',
-                                        })
-                                      }
-                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light min-h-[34px]"
+                                      aria-disabled="true"
+                                      aria-describedby={droppedTooltipId}
+                                      onClick={(e) => e.preventDefault()}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-60 cursor-not-allowed min-h-[34px]"
                                     >
                                       <RotateCcw className="w-3.5 h-3.5" />
                                       <span>Batalkan</span>
                                     </button>
-                                  )}
-
-                                  {anom.status === 'diperbaiki' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setIsAuditDrawerOpen(true)}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-xs font-semibold bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark min-h-[34px]"
+                                    <div
+                                      id={droppedTooltipId}
+                                      role="tooltip"
+                                      className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 absolute bottom-full right-0 mb-2 px-3 py-2 rounded-popover bg-surface-dark text-text-primary-dark border border-border-dark text-xs font-medium max-w-xs whitespace-normal text-left z-30 shadow-lg pointer-events-none"
                                     >
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-modified-border-light dark:text-modified-border-dark" />
-                                      <span>Tercatat di Audit Log</span>
-                                    </button>
-                                  )}
-                                </div>
+                                      Baris ini sudah tidak ada di data bersih
+                                      (sudah dibuang pada v
+                                      {dataset?.versi_bersih ?? 1}). Membatalkan
+                                      status anomali tidak mengembalikan baris
+                                      yang telah dibuang.
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {anom.kolom !== '*' && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveEditAnomalyId((prev) =>
+                                            prev === anom.id ? null : anom.id
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-brand-primary-light/40 dark:border-brand-primary-dark/40 text-brand-primary-light dark:text-brand-primary-dark hover:bg-brand-primary-light/10 min-h-[34px]"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span>
+                                          {isEditingThis
+                                            ? 'Tutup Edit'
+                                            : 'Edit'}
+                                        </span>
+                                      </button>
+                                    )}
+
+                                    {anom.status === 'pending' && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            singleReviewMutation.isPending
+                                          }
+                                          onClick={() =>
+                                            singleReviewMutation.mutate({
+                                              anomalyId: anom.id,
+                                              status: 'diterima',
+                                            })
+                                          }
+                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark border border-anomaly-success-text-light/30 min-h-[34px]"
+                                        >
+                                          <Check className="w-3.5 h-3.5" />
+                                          <span>Terima</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            singleReviewMutation.isPending
+                                          }
+                                          onClick={() =>
+                                            singleReviewMutation.mutate({
+                                              anomalyId: anom.id,
+                                              status: 'ditolak',
+                                            })
+                                          }
+                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark border border-anomaly-danger-text-light/30 min-h-[34px]"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                          <span>Tolak</span>
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {(anom.status === 'diterima' ||
+                                      anom.status === 'ditolak') && (
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          singleReviewMutation.isPending
+                                        }
+                                        onClick={() =>
+                                          singleReviewMutation.mutate({
+                                            anomalyId: anom.id,
+                                            status: 'pending',
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light min-h-[34px]"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>Batalkan</span>
+                                      </button>
+                                    )}
+
+                                    {anom.status === 'diperbaiki' && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setIsAuditDrawerOpen(true)
+                                        }
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-xs font-semibold bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark min-h-[34px]"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-modified-border-light dark:text-modified-border-dark" />
+                                        <span>Tercatat di Audit Log</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           );
@@ -2177,6 +2794,19 @@ export const AnomalyEditorTab: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* PANEL PERBANDINGAN SEBELUM VS SESUDAH PERMANEN DI BAWAH GRID (F-17) */}
+          <ReviewImpactComparisonPanel
+            dataset={dataset}
+            cleanReport={cleanReport}
+            editsResponse={editsResponse}
+            applyPreviewData={applyPreviewData}
+            rejectedClassification={rejectedClassification}
+            allLoadedAnomalies={allLoadedAnomalies}
+            isRowMappingValid={Boolean(rowMapping?.isValid)}
+            rowByRowIndex={rowMapping?.rowByRowIndex ?? {}}
+            onOpenAuditDrawer={() => setIsAuditDrawerOpen(true)}
+          />
         </>
       )}
 
@@ -2195,6 +2825,47 @@ export const AnomalyEditorTab: React.FC = () => {
         onConfirmOverwrite={() => cleanMutation.mutate(true)}
       />
 
+      {/* Modal Konfirmasi Dua Langkah Apply Review (F-17) */}
+      <ApplyReviewModal
+        isOpen={isApplyReviewModalOpen}
+        datasetId={datasetId}
+        allLoadedAnomalies={allLoadedAnomalies}
+        isRowMappingValid={Boolean(rowMapping?.isValid)}
+        rowByRowIndex={rowMapping?.rowByRowIndex ?? {}}
+        onClose={() => setIsApplyReviewModalOpen(false)}
+        onInvalidateData={invalidateAllRelatedQueries}
+        onApplySuccess={async (payload) => {
+          setIsApplyReviewModalOpen(false);
+          setSelectedAnomalyIds([]);
+          setActiveEditAnomalyId(null);
+          setLastApplyReviewResult(payload);
+
+          const execRes = payload.executionResponse;
+          if (execRes.peringatan && execRes.peringatan.length > 0) {
+            const forecastWarnings = execRes.peringatan.filter((w) =>
+              w.toLowerCase().includes('forecast')
+            );
+            if (forecastWarnings.length > 0) {
+              setStaleForecastWarnings(forecastWarnings);
+            }
+          }
+
+          await invalidateAllRelatedQueries();
+
+          const newVer = execRes.versi_baru ?? execRes.versi_lama + 1;
+          showToast(
+            `Hasil review berhasil diterapkan: ${formatNumberId(
+              execRes.baris_dibuang,
+              0
+            )} baris ditolak dibuang -> Versi Bersih v${newVer} (${formatNumberId(
+              execRes.baris_sesudah,
+              0
+            )} baris).`,
+            payload.hasPostExecutionDrift ? 'info' : 'success'
+          );
+        }}
+      />
+
       {/* Slide-over Drawer Audit Log (F-20) */}
       <AuditLogDrawer
         isOpen={isAuditDrawerOpen}
@@ -2203,6 +2874,17 @@ export const AnomalyEditorTab: React.FC = () => {
         isLoading={isEditsLoading}
         isFetching={isEditsFetching}
         onRefresh={() => refetchEdits()}
+      />
+
+      {/* Slide-over Drawer Riwayat Pemrosesan (Penyesuaian Wajib butir e) */}
+      <VersionHistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        historyLogs={historyLogs}
+        isLoading={isHistoryLoading}
+        isFetching={isHistoryFetching}
+        onRefresh={() => refetchHistory()}
+        versiBersihSaatIni={dataset?.versi_bersih ?? null}
       />
     </div>
   );

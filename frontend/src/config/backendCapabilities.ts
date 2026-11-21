@@ -1,5 +1,5 @@
 /**
- * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2 & Fase 3
+ * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2, 3, & 4
  *
  * Seluruh saklar bernilai `false` secara default sampai endpoint atau perluasan payload
  * diimplementasikan dan diverifikasi bersama pengembang backend.
@@ -115,6 +115,36 @@ export const BACKEND_CAPABILITIES = {
    *   keselamatan pengenal baris di sisi klien.
    */
   B05_UNIFIED_DATA_REVIEW_ENDPOINT: false,
+
+  /**
+   * B-06: Rincian Isi Baris Aktual pada Respons Diff Apply Review
+   * - Endpoint yang dibutuhkan: `POST /datasets/{dataset_id}/apply-review?preview=true`
+   * - Bentuk perluasan respons yang diharapkan (sesuai usulan B-06 PRD Bagian 12):
+   *   {
+   *     ...field_apply_review,
+   *     detail_baris_dibuang: Array<{
+   *       row_index: number;
+   *       baris_di_file_asli: number;
+   *       alasan: string[];
+   *       kolom?: string[];
+   *       row_json?: Record<string, unknown>;
+   *     }>;
+   *     rows?: Array<{
+   *       row_index: number;
+   *       baris_di_file_asli: number;
+   *       row_json: Record<string, unknown>;
+   *       alasan: string[];
+   *     }>;
+   *   }
+   * - Status: belum tersedia di backend (`review.py` saat ini mengembalikan `row_index`,
+   *   `baris_di_file_asli`, dan `alasan` pada `detail_baris_dibuang`).
+   * - Perilaku saat false: Modal konfirmasi dua langkah dan panel perbandingan menampilkan
+   *   `baris_di_file_asli`, `kolom` (dari daftar anomali ditolak pada `row_index` tersebut),
+   *   dan `alasan` dari backend, serta menyertakan cuplikan isi baris HANYA JIKA pemetaan
+   *   baris (`rowIndexMapper`) berstatus valid (`isValid === true`) dan `row_index` terkait
+   *   terverifikasi di dalam pratinjau data bersih.
+   */
+  B06_APPLY_REVIEW_DIFF_ROWS: false,
 
   /**
    * B-08: Perluasan Metadata Katalog Dataset (`GET /datasets`)
