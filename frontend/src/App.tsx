@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -12,8 +12,10 @@ import { UploadPage } from '@/pages/UploadPage';
 
 import { DataStructureTab } from '@/pages/workspace/DataStructureTab';
 import { AnomalyEditorTab } from '@/pages/workspace/AnomalyEditorTab';
-import { AnalyticsTab } from '@/pages/workspace/AnalyticsTab';
 import { ForecastingTab } from '@/pages/workspace/ForecastingTab';
+
+// Code splitting: muat Tab 3 (Dashboard Analitik) secara lazy
+const AnalyticsTab = lazy(() => import('@/pages/workspace/AnalyticsTab'));
 
 // Inisialisasi React Query Client terpusat
 const queryClient = new QueryClient({
@@ -44,7 +46,20 @@ export const App: React.FC = () => {
             <Route index element={<Navigate to="data-struktur" replace />} />
             <Route path="data-struktur" element={<DataStructureTab />} />
             <Route path="review-anomali" element={<AnomalyEditorTab />} />
-            <Route path="dashboard-analitik" element={<AnalyticsTab />} />
+            <Route
+              path="dashboard-analitik"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+                      Memuat modul Dashboard Analitik...
+                    </div>
+                  }
+                >
+                  <AnalyticsTab />
+                </Suspense>
+              }
+            />
             <Route path="peramalan-ekspor" element={<ForecastingTab />} />
           </Route>
 

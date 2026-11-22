@@ -43,6 +43,16 @@ export const WorkspaceLayout: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['dataset-edits', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-unified-review', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-apply-review-preview', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-compare-options', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-eda', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-eda-distribution', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-eda-trend', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-eda-trend-secondary', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-compare-full', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-compare-periode', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-ratio', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-b07-matrix', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-b07-hierarchy', datasetId] });
   };
 
   const errorMessage =

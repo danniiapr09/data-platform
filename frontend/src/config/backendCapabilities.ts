@@ -147,6 +147,45 @@ export const BACKEND_CAPABILITIES = {
   B06_APPLY_REVIEW_DIFF_ROWS: false,
 
   /**
+   * B-07: Endpoint Agregasi Hierarki & Matriks 2D untuk Galeri Diagram (Fase 5)
+   * - Endpoint yang dibutuhkan:
+   *   1) `GET /datasets/{dataset_id}/analysis/hierarchy`
+   *      Parameter query: `levels: string` (daftar kolom dipisah koma), `nilai: string`, `agg?: 'sum' | 'mean' | 'median' | 'min' | 'max'`
+   *      Bentuk respons yang diharapkan:
+   *      {
+   *        dataset_id: number;
+   *        levels: string[];
+   *        nilai: string;
+   *        agg: string;
+   *        root: {
+   *          name: string;
+   *          value?: number;
+   *          children?: Array<{ name: string; value?: number; children?: unknown[] }>;
+   *        };
+   *      }
+   *   2) `GET /datasets/{dataset_id}/analysis/matrix`
+   *      Parameter query: `baris: string`, `kolom: string`, `nilai: string`, `agg?: 'sum' | 'mean' | 'median' | 'min' | 'max'`
+   *      Bentuk respons yang diharapkan:
+   *      {
+   *        dataset_id: number;
+   *        baris: string;
+   *        kolom: string;
+   *        nilai: string;
+   *        agg: string;
+   *        label_baris: string[];
+   *        label_kolom: string[];
+   *        nilai_matriks: Array<Array<number | null>>;
+   *        min: number | null;
+   *        max: number | null;
+   *      }
+   * - Status: belum tersedia di backend (diusulkan di PRD Bagian 12 butir 7).
+   * - Perilaku saat false: Kartu Heatmap Matriks 2D (Kategori × Kategori), Hierarchy Bubbles
+   *   (Circle Packing), dan Hierarchy Sunburst ditampilkan di bagian bawah galeri dalam keadaan
+   *   nonaktif dengan keterangan "Menunggu dukungan backend (B-07)" tanpa memalsukan data.
+   */
+  B07_HIERARCHY_MATRIX_ANALYSIS_ENDPOINT: false,
+
+  /**
    * B-08: Perluasan Metadata Katalog Dataset (`GET /datasets`)
    * - Endpoint yang dibutuhkan: `GET /datasets` (perluasan field per item)
    * - Bentuk respons yang diharapkan (sesuai usulan B-08 PRD Bagian 12):
