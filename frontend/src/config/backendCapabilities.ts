@@ -253,4 +253,25 @@ export const BACKEND_CAPABILITIES = {
    *   memetakan kode status HTTP (400, 401, 403, 404, 409, 422, 500) ke pesan Bahasa Indonesia.
    */
   B12_STANDARD_ERROR_FORMAT: false,
+
+  /**
+   * B-13: Penanda Versi Data Bersih Eksplisit pada Hasil Peramalan Tersimpan (Fase 6)
+   * - Endpoint yang terkait:
+   *   - `POST /datasets/{dataset_id}/forecast`
+   *   - `GET /datasets/{dataset_id}/forecast/laporan`
+   *   - `GET /datasets/{dataset_id}`
+   * - Bentuk perluasan kontrak yang diharapkan:
+   *   {
+   *     ...field_forecast_laporan,
+   *     versi_bersih: number; // versi CleanData yang dipakai saat peramalan dihitung
+   *     is_forecast_stale?: boolean;
+   *   }
+   * - Status: perbaikan opsional (saat ini `Forecast` dan log `forecast_report` di `forecast.py`
+   *   belum menyimpan nomor `versi_bersih` saat peramalan dihitung).
+   * - Perilaku saat false: Frontend mendeteksi peramalan usang secara persisten dan deterministik
+   *   dari urutan kronologis `GET /datasets/{id}/history` (memeriksa apakah terdapat langkah
+   *   `cleaning`, `edit_data`, atau `apply_review` setelah langkah `forecasting` terakhir).
+   *   Ketika saklar ini diaktifkan (`true`), frontend juga memeriksa `laporan.versi_bersih !== dataset.versi_bersih`.
+   */
+  B13_FORECAST_DATA_VERSION: false,
 } as const;

@@ -39,6 +39,9 @@
     /* Sel Dimodifikasi Manual Light Mode */
     --color-cell-modified-bg: #FEF08A;
     --color-cell-modified-border: #CA8A04;
+
+    /* Pita Rentang Prediksi Peramalan (design-system.md: forecast-ci-band) */
+    --color-forecast-ci-band: rgba(14, 165, 233, 0.15);
   }
 
   .dark {
@@ -69,6 +72,9 @@
     /* Sel Dimodifikasi Manual Dark Mode */
     --color-cell-modified-bg: #422006;
     --color-cell-modified-border: #EAB308;
+
+    /* Pita Rentang Prediksi Peramalan (design-system.md: forecast-ci-band) */
+    --color-forecast-ci-band: rgba(14, 165, 233, 0.15);
   }
 
   body {

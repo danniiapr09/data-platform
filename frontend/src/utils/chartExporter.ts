@@ -83,6 +83,7 @@ function getResolvedThemeVariables(): Record<string, string> {
     '--color-anomaly-warning-bg',
     '--color-anomaly-danger-text',
     '--color-anomaly-danger-bg',
+    '--color-forecast-ci-band',
   ];
 
   const map: Record<string, string> = {};

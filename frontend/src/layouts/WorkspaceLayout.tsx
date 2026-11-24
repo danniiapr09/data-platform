@@ -53,6 +53,9 @@ export const WorkspaceLayout: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['dataset-ratio', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-b07-matrix', datasetId] });
     queryClient.invalidateQueries({ queryKey: ['dataset-b07-hierarchy', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-forecast-report', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-forecast-rows', datasetId] });
+    queryClient.invalidateQueries({ queryKey: ['dataset-forecast-trend', datasetId] });
   };
 
   const errorMessage =

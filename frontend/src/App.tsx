@@ -12,10 +12,11 @@ import { UploadPage } from '@/pages/UploadPage';
 
 import { DataStructureTab } from '@/pages/workspace/DataStructureTab';
 import { AnomalyEditorTab } from '@/pages/workspace/AnomalyEditorTab';
-import { ForecastingTab } from '@/pages/workspace/ForecastingTab';
 
-// Code splitting: muat Tab 3 (Dashboard Analitik) secara lazy
+// Code splitting: muat Tab 3 (Dashboard Analitik) dan Tab 4 (Peramalan & Ekspor) secara lazy
+// Kedua tab berbagi chunk Recharts, ChartCardShell, dan FullscreenChartModal tanpa duplikasi
 const AnalyticsTab = lazy(() => import('@/pages/workspace/AnalyticsTab'));
+const ForecastingTab = lazy(() => import('@/pages/workspace/ForecastingTab'));
 
 // Inisialisasi React Query Client terpusat
 const queryClient = new QueryClient({
@@ -60,7 +61,20 @@ export const App: React.FC = () => {
                 </Suspense>
               }
             />
-            <Route path="peramalan-ekspor" element={<ForecastingTab />} />
+            <Route
+              path="peramalan-ekspor"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+                      Memuat modul Peramalan & Ekspor...
+                    </div>
+                  }
+                >
+                  <ForecastingTab />
+                </Suspense>
+              }
+            />
           </Route>
 
           {/* Fallback ke Beranda jika rute tidak ditemukan */}
