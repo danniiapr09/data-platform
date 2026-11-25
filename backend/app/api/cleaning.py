@@ -90,7 +90,18 @@ def clean_preview(dataset_id: int, limit: int = 20, db: Session = Depends(get_db
     version = db.scalar(select(func.max(CleanData.version)).where(CleanData.dataset_id == dataset_id))
     if not version:
         raise HTTPException(404, "Dataset belum di-cleaning.")
+    total = db.scalar(select(func.count()).select_from(CleanData)
+                      .where(CleanData.dataset_id == dataset_id, CleanData.version == version))
     rows = db.scalars(select(CleanData).where(CleanData.dataset_id == dataset_id,
                                               CleanData.version == version)
                       .order_by(CleanData.row_index).limit(max(1, min(limit, 200)))).all()
-    return {"dataset_id": dataset_id, "versi": version, "preview": [r.row_json for r in rows]}
+    return {
+        "dataset_id": dataset_id,
+        "version": version,
+        "total_rows": total,
+        # row_index database asli ditaruh terakhir supaya selalu menang kalau ada kolom bernama sama
+        "rows": [{**r.row_json, "row_index": r.row_index} for r in rows],
+        # kunci lama, dipertahankan agar tidak merusak pemanggil yang sudah ada
+        "versi": version,
+        "preview": [r.row_json for r in rows],
+    }

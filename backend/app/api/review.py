@@ -26,7 +26,8 @@ def apply_review(dataset_id: int, preview: bool = False, actor: Actor = Depends(
         raise HTTPException(400, "Dataset belum di-cleaning. Jalankan cleaning dulu.")
     rows = db.scalars(select(CleanData).where(CleanData.dataset_id == dataset_id,
                                               CleanData.version == version)
-                      .order_by(CleanData.row_index)).all()
+                      .order_by(CleanData.row_index)).all() 
+    row_by_index = {r.row_index: r.row_json for r in rows}
 
     anomalies = db.scalars(select(Anomaly).where(Anomaly.dataset_id == dataset_id)).all()
     alasan_by_row: dict = {}
@@ -67,8 +68,9 @@ def apply_review(dataset_id: int, preview: bool = False, actor: Actor = Depends(
                              f"oleh {pengguna}"[:200]))
         db.commit()
 
-    return {
+        return {
         "dataset_id": dataset_id,
+        "status": "preview" if preview else "applied",   # BARU
         "preview": preview,
         "versi_lama": version,
         "versi_baru": new_version,
@@ -80,6 +82,11 @@ def apply_review(dataset_id: int, preview: bool = False, actor: Actor = Depends(
         "diterapkan_oleh": actor.user or "tidak diketahui",
         "detail_baris_dibuang": [{"row_index": i, "baris_di_file_asli": i + 2, "alasan": alasan_by_row[i]}
                                  for i in buang[:MAKS_DETAIL]],
+        "rejected_rows_sample": [                          # BARU
+            {"row_index": i,
+             **{k: v for k, v in row_by_index[i].items() if k not in ("row_index", "alasan_dibuang")},
+             "alasan_dibuang": "; ".join(alasan_by_row[i])}
+            for i in buang[:MAKS_DETAIL]],
         "detail_terpotong": len(buang) > MAKS_DETAIL,
         "peringatan": peringatan,
         "deskripsi": (f"{'Akan membuang' if preview else 'Membuang'} {len(buang)} baris karena anomalinya ditolak. "
