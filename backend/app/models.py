@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -104,3 +104,22 @@ class DataEdit(Base):
     alasan: Mapped[str] = mapped_column(Text)
     diubah_oleh: Mapped[str | None] = mapped_column(String(100), nullable=True)
     waktu: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+class ColumnMeta(Base):
+    """Deskripsi semantik kolom, diisi manual oleh pegawai."""
+    __tablename__ = "column_meta"
+    __table_args__ = (UniqueConstraint("dataset_id", "kolom"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("datasets.id"), index=True)
+    kolom: Mapped[str] = mapped_column(String(100))
+    deskripsi: Mapped[str] = mapped_column(Text)
+
+class DatasetMeta(Base):
+    """Metadata teknis dan katalog per dataset (satu baris per dataset)."""
+    __tablename__ = "dataset_meta"
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("datasets.id"), primary_key=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sheet_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    instansi_pengelola: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    deskripsi: Mapped[str | None] = mapped_column(Text, nullable=True)
+    total_columns: Mapped[int | None] = mapped_column(Integer, nullable=True)
