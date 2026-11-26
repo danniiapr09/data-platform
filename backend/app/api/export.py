@@ -1,15 +1,19 @@
+import csv
 import io
 import json
+import re
 from datetime import datetime
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import StreamingResponse 
 from openpyxl.styles import PatternFill
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from ..models import Anomaly, CleanData, DataEdit, Forecast
+from ..db import SessionLocal, get_db
+from ..errors import AppError
+from ..models import Anomaly, CleanData, DataEdit, Forecast,RawData
 from .analysis import load_clean_df
 from .forecast import rapikan
 from .reports import get_clean_report, get_dataset_or_404
@@ -156,3 +160,59 @@ def export_forecast_csv(dataset_id: int, db: Session = Depends(get_db)):
     content = _safe(fc).to_csv(index=False).encode("utf-8-sig")  # utf-8-sig supaya rapi di Excel
     return Response(content, media_type="text/csv", headers={
         "Content-Disposition": f'attachment; filename="forecast_dataset_{dataset_id}.csv"'})
+
+def _slug(name: str) -> str:
+    base = re.sub(r"\.(csv|xlsx|xlsm|xls)$", "", name or "dataset", flags=re.I)
+    return re.sub(r"[^A-Za-z0-9]+", "_", base).strip("_") or "dataset"
+
+
+def _csv_cell(v):
+    if v is None:
+        return ""
+    if isinstance(v, (dict, list)):
+        v = json.dumps(v, ensure_ascii=False)
+    return _guard(v)  # cegah formula injection, sama seperti ekspor Excel
+
+
+def _stream_csv(model, dataset_id: int, version: int | None, chunk: int = 1000):
+    """Alirkan CSV per potongan baris. Sesi database dibuka sendiri karena generator jalan setelah endpoint selesai."""
+    def generate():
+        yield "\ufeff"  # BOM supaya Excel membaca UTF-8 dengan benar
+        cols, last = None, -1
+        with SessionLocal() as s:
+            while True:
+                q = select(model).where(model.dataset_id == dataset_id, model.row_index > last)
+                if version is not None:
+                    q = q.where(model.version == version)
+                rows = s.scalars(q.order_by(model.row_index).limit(chunk)).all()
+                if not rows:
+                    break
+                buf = io.StringIO()
+                w = csv.writer(buf)
+                if cols is None:
+                    cols = list(rows[0].row_json)
+                    w.writerow([_guard(str(c)) for c in cols])
+                for r in rows:
+                    w.writerow([_csv_cell(r.row_json.get(c)) for c in cols])
+                last = rows[-1].row_index
+                yield buf.getvalue()
+    return generate()
+
+
+@router.get("/raw.csv")
+def export_raw_csv(dataset_id: int, db: Session = Depends(get_db)):
+    ds = get_dataset_or_404(db, dataset_id)
+    return StreamingResponse(_stream_csv(RawData, dataset_id, None), media_type="text/csv; charset=utf-8",
+                             headers={"Content-Disposition": f'attachment; filename="{_slug(ds.nama)}_raw.csv"'})
+
+
+@router.get("/clean.csv")
+def export_clean_csv(dataset_id: int, db: Session = Depends(get_db)):
+    ds = get_dataset_or_404(db, dataset_id)
+    version = db.scalar(select(func.max(CleanData.version)).where(CleanData.dataset_id == dataset_id))
+    if not version:
+        raise AppError(400, "DATASET_NOT_CLEANED", "Dataset belum di-cleaning.",
+                       detail="Jalankan cleaning dulu sebelum mengunduh data bersih.")
+    return StreamingResponse(_stream_csv(CleanData, dataset_id, version), media_type="text/csv; charset=utf-8",
+                             headers={"Content-Disposition":
+                                      f'attachment; filename="{_slug(ds.nama)}_clean_v{version}.csv"'})
