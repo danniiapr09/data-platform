@@ -18,6 +18,7 @@ from .api.reports import router as reports_router
 from .api.review import router as review_router
 from .api.ringkasan import router as ringkasan_router
 from .api.columns import router as columns_router
+from .api.data_review import router as data_review_router
 from .errors import register_error_handlers
 from .db import Base, SessionLocal, engine
 from .security import require_api_key
@@ -34,7 +35,7 @@ app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in origins],
 # Semua endpoint data dikunci dengan X-API-Key (aktif kalau INTERNAL_API_KEY diisi). /health tetap terbuka.
 guard = [Depends(require_api_key)]
 for router in (datasets_router, cleaning_router, anomalies_router, edits_router, analysis_router,
-                compare_router, forecast_router, reports_router, export_router, review_router, ringkasan_router, columns_router):
+                compare_router, forecast_router, reports_router, export_router, review_router, ringkasan_router, columns_router, data_review_router):
     app.include_router(router, dependencies=guard)
 
 
