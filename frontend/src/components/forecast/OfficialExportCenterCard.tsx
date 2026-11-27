@@ -226,13 +226,13 @@ export const OfficialExportCenterCard: React.FC<
                 className={`flex items-start gap-2 ${
                   isIncluded
                     ? 'text-text-primary-light dark:text-text-primary-dark'
-                    : 'text-text-muted-light dark:text-text-muted-dark'
+                    : 'text-text-muted-light dark:text-text-secondary-dark'
                 }`}
               >
                 {isIncluded ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-anomaly-success-text-light dark:text-anomaly-success-text-dark flex-shrink-0 mt-0.5" />
                 ) : (
-                  <Clock className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark flex-shrink-0 mt-0.5" />
+                  <Clock className="w-3.5 h-3.5 text-text-muted-light dark:text-text-secondary-dark flex-shrink-0 mt-0.5" />
                 )}
                 <div className="leading-relaxed">
                   <strong className="font-mono font-semibold">
@@ -278,7 +278,7 @@ export const OfficialExportCenterCard: React.FC<
             className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-button transition-colors min-h-control focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark ${
               canDownloadXlsx && !isDownloadingXlsx
                 ? 'bg-brand-primary-light text-white hover:bg-brand-primary-light/90 dark:bg-brand-cyan dark:text-canvas-dark dark:hover:bg-brand-cyan/90 cursor-pointer'
-                : 'bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-70 cursor-not-allowed'
+                : 'bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-70 cursor-not-allowed'
             }`}
           >
             {isDownloadingXlsx ? (
@@ -298,7 +298,7 @@ export const OfficialExportCenterCard: React.FC<
             <div
               id="xlsx-disabled-tooltip"
               role="tooltip"
-              className="hidden group-hover:block group-focus-within:block mt-1.5 p-2 rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-xs text-text-secondary-light dark:text-text-secondary-dark shadow-md"
+              className="mt-1.5 p-2.5 rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-xs text-text-secondary-light dark:text-text-secondary-dark opacity-90 group-hover:opacity-100 group-focus-within:opacity-100 group-focus-within:ring-1 group-focus-within:ring-brand-primary-light"
             >
               {xlsxDisabledReason}
             </div>
@@ -323,7 +323,7 @@ export const OfficialExportCenterCard: React.FC<
             </div>
           </div>
 
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-brand-cyan flex-shrink-0">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-brand-cyan/15 border border-brand-cyan/30 text-brand-primary-light dark:text-brand-primary-dark flex-shrink-0">
             CSV (UTF-8-SIG)
           </span>
         </div>
@@ -367,7 +367,7 @@ export const OfficialExportCenterCard: React.FC<
             className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-button transition-colors min-h-control focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark ${
               canDownloadCsv && !isDownloadingCsv
                 ? 'bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark hover:bg-header-light dark:hover:bg-header-dark cursor-pointer'
-                : 'bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-70 cursor-not-allowed'
+                : 'bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-70 cursor-not-allowed'
             }`}
           >
             {isDownloadingCsv ? (

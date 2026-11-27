@@ -530,7 +530,7 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                     <ArrowRight className="w-4 h-4" />
                     <span>v{targetNewVersion}</span>
                   </div>
-                  <span className="text-[11px] text-text-muted-light dark:text-text-muted-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
                     Versi aktif baru
                   </span>
                 </div>
@@ -543,7 +543,7 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                   <div className="text-lg font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-1">
                     {formatNumberId(previewData.baris_sebelum, 0)} baris
                   </div>
-                  <span className="text-[11px] text-text-muted-light dark:text-text-muted-dark">
+                  <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
                     Jumlah baris saat ini
                   </span>
                 </div>
@@ -556,7 +556,7 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                   <div className="text-lg font-bold font-mono tabular-numbers text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark mt-1">
                     -{formatNumberId(previewData.baris_dibuang, 0)} baris
                   </div>
-                  <span className="text-[11px] text-anomaly-danger-text-light/90 dark:text-anomaly-danger-text-dark/90 font-mono tabular-numbers">
+                  <span className="text-xs text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark font-mono tabular-numbers">
                     Dari {formatNumberId(previewData.anomali_ditolak_diterapkan, 0)}{' '}
                     anomali ditolak
                   </span>
@@ -570,7 +570,7 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                   <div className="text-lg font-bold font-mono tabular-numbers text-anomaly-success-text-light dark:text-anomaly-success-text-dark mt-1">
                     {formatNumberId(previewData.baris_sesudah, 0)} baris
                   </div>
-                  <span className="text-[11px] text-anomaly-success-text-light/90 dark:text-anomaly-success-text-dark/90">
+                  <span className="text-xs text-anomaly-success-text-light dark:text-anomaly-success-text-dark">
                     Dipertahankan di v{targetNewVersion}
                   </span>
                 </div>
@@ -620,22 +620,22 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                   </div>
 
                   <div className="rounded-card border border-border-light dark:border-border-dark overflow-hidden max-h-72 overflow-y-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse" aria-label="Daftar Baris yang Akan Dibuang pada Penerapan Review">
                       <thead>
                         <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0 z-10">
-                          <th className="py-3 px-4 whitespace-nowrap">
-                            Baris File Asli
+                          <th scope="col" className="py-3 px-4 whitespace-nowrap">
+                            No. Baris
                           </th>
-                          <th className="py-3 px-4 whitespace-nowrap">
+                          <th scope="col" className="py-3 px-4 whitespace-nowrap">
                             Kolom Ditolak
                           </th>
-                          <th className="py-3 px-4">Alasan Anomali Ditolak</th>
-                          <th className="py-3 px-4">
+                          <th scope="col" className="py-3 px-4">Alasan Anomali Ditolak</th>
+                          <th scope="col" className="py-3 px-4">
                             Isi Baris (Bila Terverifikasi)
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border-light dark:divide-border-dark text-xs font-mono tabular-numbers">
+                      <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm font-mono tabular-numbers">
                         {previewData.detail_baris_dibuang.map((rowItem) => {
                           const cols =
                             rowItem.kolom ||
@@ -657,12 +657,9 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                             >
                               <td className="py-2.5 px-4 font-bold whitespace-nowrap align-top">
                                 <div className="inline-flex items-center gap-1.5 line-through">
-                                  <X className="w-3.5 h-3.5 flex-shrink-0" />
-                                  <span>#{rowItem.baris_di_file_asli}</span>
+                                  <X className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                                  <span>#{formatNumberId(rowItem.baris_di_file_asli, 0)}</span>
                                 </div>
-                                <span className="block text-[11px] font-normal opacity-80">
-                                  (row_index: {rowItem.row_index})
-                                </span>
                               </td>
                               <td className="py-2.5 px-4 whitespace-nowrap align-top font-semibold line-through">
                                 {cols.length > 0 ? cols.join(', ') : '-'}
@@ -687,13 +684,13 @@ export const ApplyReviewModal: React.FC<ApplyReviewModalProps> = ({
                                           className="px-2 py-0.5 rounded-button bg-surface-light/80 dark:bg-surface-dark/80 border border-anomaly-danger-text-light/25 dark:border-anomaly-danger-text-dark/30 line-through"
                                         >
                                           <strong>{k}:</strong>{' '}
-                                          {formatCellValueId(v)}
+                                          {formatCellValueId(v, k)}
                                         </span>
                                       ))}
                                   </div>
                                 ) : (
                                   <span className="font-sans italic text-text-secondary-light dark:text-text-secondary-dark">
-                                    Isi baris tidak ditampilkan (di luar pratinjau terverifikasi / menunggu B-06)
+                                    Isi baris tidak ditampilkan karena berada di luar pratinjau terverifikasi saat ini
                                   </span>
                                 )}
                               </td>

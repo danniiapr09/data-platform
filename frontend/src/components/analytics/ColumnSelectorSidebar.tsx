@@ -90,7 +90,7 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
   return (
     <aside
       aria-label="Panel Pilih Kolom Analisis"
-      className="w-full lg:w-[290px] flex-shrink-0 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 space-y-5 self-start"
+      className="w-full lg:w-[260px] 2xl:w-[280px] flex-shrink-0 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 space-y-5 self-start"
     >
       {/* Header Panel */}
       <div className="flex items-start justify-between gap-2 border-b border-border-light dark:border-border-dark pb-3">
@@ -164,7 +164,7 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
           return (
             <label
               key={col.name}
-              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-button border text-sm cursor-pointer transition-colors min-h-control ${
+              className={`flex flex-col gap-1.5 px-3 py-2 rounded-button border text-sm cursor-pointer transition-colors min-h-control focus-within:ring-2 focus-within:ring-brand-primary-light dark:focus-within:ring-brand-primary-dark ${
                 isChecked
                   ? 'bg-header-light dark:bg-header-dark border-brand-primary-light dark:border-brand-primary-dark text-text-primary-light dark:text-text-primary-dark'
                   : 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light/50 dark:hover:bg-header-dark/50'
@@ -182,17 +182,17 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
                 {isTime ? (
                   <span
                     title="Kolom Waktu / Tanggal"
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-brand-violet flex-shrink-0"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-brand-violet/40 text-text-primary-light dark:text-text-primary-dark flex-shrink-0"
                   >
-                    <Calendar className="w-3 h-3" />
+                    <Calendar className="w-3 h-3" aria-hidden="true" />
                     <span>[Tanggal]</span>
                   </span>
                 ) : isCategory ? (
                   <span
                     title="Kolom Teks / Kategori"
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-brand-cyan flex-shrink-0"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-brand-cyan/40 text-brand-primary-light dark:text-brand-primary-dark flex-shrink-0"
                   >
-                    <Type className="w-3 h-3" />
+                    <Type className="w-3 h-3" aria-hidden="true" />
                     <span>[T]</span>
                   </span>
                 ) : (
@@ -200,36 +200,38 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
                     title="Kolom Angka / Numerik"
                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-brand-primary-light dark:text-brand-primary-dark flex-shrink-0"
                   >
-                    <Hash className="w-3 h-3" />
+                    <Hash className="w-3 h-3" aria-hidden="true" />
                     <span>[123]</span>
                   </span>
                 )}
 
-                <div className="min-w-0">
-                  <span
-                    className="block font-mono text-sm font-medium truncate"
-                    title={col.name}
-                  >
-                    {col.name}
-                  </span>
+                <span
+                  className="block font-mono text-sm font-medium truncate min-w-0 flex-1"
+                  title={col.name}
+                >
+                  {col.name}
+                </span>
+              </div>
+
+              {(roleBadge || col.isLikelyIdentifier) && (
+                <div className="flex flex-wrap items-center gap-1.5 pl-6">
+                  {roleBadge && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
+                        roleBadgePrimary
+                          ? 'bg-brand-primary-light text-white dark:bg-brand-cyan dark:text-canvas-dark'
+                          : 'bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark'
+                      }`}
+                    >
+                      {roleBadge}
+                    </span>
+                  )}
                   {col.isLikelyIdentifier && (
-                    <span className="block text-xs text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
+                    <span className="text-xs text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
                       (kemungkinan pengenal)
                     </span>
                   )}
                 </div>
-              </div>
-
-              {roleBadge && (
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
-                    roleBadgePrimary
-                      ? 'bg-brand-primary-light text-white dark:bg-brand-cyan dark:text-canvas-dark'
-                      : 'bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark'
-                  }`}
-                >
-                  {roleBadge}
-                </span>
               )}
             </label>
           );
@@ -245,7 +247,7 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
           >
             Kolom Waktu Manual
           </label>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             Kolom waktu tidak terdeteksi otomatis. Pilih kolom waktu manual untuk
             menguji grafik tren:
           </p>
@@ -300,7 +302,7 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
           <div className="flex items-center justify-between gap-2 p-2.5 rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark">
             <div className="text-xs font-mono text-text-primary-light dark:text-text-primary-dark truncate">
               <span className="font-semibold">{primaryNumeric}</span>
-              <span className="text-text-muted-light dark:text-text-muted-dark">
+              <span className="text-text-muted-light dark:text-text-secondary-dark">
                 {' '}
                 /{' '}
               </span>
@@ -318,7 +320,7 @@ export const ColumnSelectorSidebar: React.FC<ColumnSelectorSidebarProps> = ({
             </button>
           </div>
         ) : (
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             Centang minimal 2 kolom angka [123] untuk mengaktifkan Kalkulator
             Rasio, Korelasi, dan Sebaran Bubble/Scatter.
           </p>

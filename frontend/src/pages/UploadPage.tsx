@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
   Columns,
   FileSpreadsheet,
   Info,
@@ -17,6 +16,7 @@ import {
 import { Button } from '@/components/common/Button';
 import { DataTypeBadge, FormatFileBadge } from '@/components/common/StatusBadge';
 import { showToast } from '@/components/common/Toast';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { uploadDataset } from '@/services/datasetService';
 import { UploadDatasetResponse } from '@/types/dataset';
 import {
@@ -44,6 +44,7 @@ const STANDARD_CATEGORIES = [
 const CUSTOM_CATEGORY_VALUE = '__LAINNYA__';
 
 export const UploadPage: React.FC = () => {
+  useDocumentTitle('Unggah Dataset Baru');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -221,37 +222,15 @@ export const UploadPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Breadcrumb & Header Halaman */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-text-secondary-light dark:text-text-secondary-dark">
-          <NavLink
-            to="/beranda"
-            className="hover:text-text-primary-light dark:hover:text-text-primary-dark"
-          >
-            Beranda
-          </NavLink>
-          <ChevronRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark" />
-          <NavLink
-            to="/katalog"
-            className="hover:text-text-primary-light dark:hover:text-text-primary-dark"
-          >
-            Katalog Dataset
-          </NavLink>
-          <ChevronRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark" />
-          <span className="font-semibold text-text-primary-light dark:text-text-primary-dark">
-            Unggah Dataset Baru
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
-              Unggah & Profiling Awal Dataset
-            </h2>
-            <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-              Tambahkan berkas data CSV atau Excel untuk pemeriksaan skema otomatis, deteksi tipe data, dan pratinjau mentah sebelum masuk tahap kurasi & pembersihan data.
-            </p>
-          </div>
+      {/* Header Halaman */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
+            Unggah & Profiling Awal Dataset
+          </h1>
+          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
+            Tambahkan berkas data CSV atau Excel untuk pemeriksaan skema otomatis, deteksi tipe data, dan pratinjau mentah sebelum masuk tahap kurasi & pembersihan data.
+          </p>
         </div>
       </div>
 
@@ -296,7 +275,7 @@ export const UploadPage: React.FC = () => {
               <p className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark max-w-md">
                 Seret & lepas berkas CSV atau Excel (.csv, .xlsx, .xls) di sini, atau klik untuk memilih
               </p>
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark mt-1.5">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark mt-1.5">
                 Ukuran maksimal 10 MB • Format yang didukung: UTF-8 CSV, Microsoft Excel (.xlsx, .xls)
               </p>
             </div>
@@ -355,7 +334,7 @@ export const UploadPage: React.FC = () => {
                   placeholder="Otomatis menggunakan nama berkas jika kosong"
                   className="w-full px-3.5 py-2 text-sm rounded-input border border-border-light dark:border-border-dark bg-canvas-light dark:bg-canvas-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control"
                 />
-                <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+                <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
                   Akan digunakan sebagai label identitas resmi pada katalog dan laporan operasional (maks. {MAX_NAMA_LENGTH} karakter).
                 </p>
               </div>
@@ -404,10 +383,12 @@ export const UploadPage: React.FC = () => {
                     maxLength={MAX_JENIS_LENGTH}
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value)}
+                    aria-describedby="custom-jenis-help"
+                    aria-invalid={Boolean(validationError && !customCategory.trim())}
                     placeholder="Masukkan nama kategori dataset..."
                     className="w-full px-3.5 py-2 text-sm rounded-input border border-border-light dark:border-border-dark bg-canvas-light dark:bg-canvas-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control"
                   />
-                  <p className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+                  <p id="custom-jenis-help" className="text-xs text-text-secondary-light dark:text-text-secondary-dark tabular-numbers">
                     Maksimal {MAX_JENIS_LENGTH} karakter ({customCategory.trim().length}/{MAX_JENIS_LENGTH}).
                   </p>
                 </div>
@@ -421,7 +402,14 @@ export const UploadPage: React.FC = () => {
                   <span>Mengunggah & menganalisis skema...</span>
                   <span className="tabular-numbers">{uploadProgress}%</span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-header-light dark:bg-header-dark overflow-hidden">
+                <div
+                  role="progressbar"
+                  aria-label="Progres unggah dataset"
+                  aria-valuenow={uploadProgress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className="w-full h-2 rounded-full bg-header-light dark:bg-header-dark overflow-hidden"
+                >
                   <div
                     className="h-full bg-brand-primary-light dark:bg-brand-primary-dark transition-all duration-200"
                     style={{ width: `${uploadProgress}%` }}
@@ -433,10 +421,11 @@ export const UploadPage: React.FC = () => {
             {/* Pesan Error Validasi Sisi Klien (Error server ditangani oleh Toast agar tidak ganda) */}
             {validationError && (
               <div
+                id="upload-validation-error"
                 role="alert"
-                className="p-3.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark border border-anomaly-danger-text-light/30 dark:border-anomaly-danger-text-dark/40 text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark text-xs font-medium flex items-start gap-2.5"
+                className="p-3.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark border border-anomaly-danger-text-light/30 dark:border-anomaly-danger-text-dark/40 text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark text-sm font-medium flex items-start gap-2.5"
               >
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <span>{validationError}</span>
               </div>
             )}
@@ -519,14 +508,14 @@ export const UploadPage: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0">
-                      <th className="py-3 px-4">Nama Kolom</th>
-                      <th className="py-3 px-3">Tipe</th>
-                      <th className="py-3 px-3">Sel Kosong</th>
-                      <th className="py-3 px-3">Unik</th>
-                      <th className="py-3 px-4">Sampel Nilai</th>
+                      <th scope="col" className="py-3 px-4">Nama Kolom</th>
+                      <th scope="col" className="py-3 px-3">Tipe</th>
+                      <th scope="col" className="py-3 px-3">Sel Kosong</th>
+                      <th scope="col" className="py-3 px-3">Unik</th>
+                      <th scope="col" className="py-3 px-4">Sampel Nilai</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-light dark:divide-border-dark text-xs">
+                  <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
                     {uploadResult.kolom.map((col) => {
                       const emptyPercent =
                         uploadResult.jumlah_baris > 0
@@ -559,7 +548,14 @@ export const UploadPage: React.FC = () => {
                           <td className="py-3 px-3 font-mono tabular-numbers text-text-secondary-light dark:text-text-secondary-dark">
                             {formatNumberId(col.unik, 0)}
                           </td>
-                          <td className="py-3 px-4 font-mono text-text-muted-light dark:text-text-muted-dark truncate max-w-[160px]">
+                          <td
+                            className="py-3 px-4 font-mono text-text-secondary-light dark:text-text-secondary-dark truncate max-w-[160px]"
+                            title={
+                              col.contoh && col.contoh.length > 0
+                                ? col.contoh.slice(0, 3).join(', ')
+                                : '-'
+                            }
+                          >
                             {col.contoh && col.contoh.length > 0
                               ? col.contoh.slice(0, 3).join(', ')
                               : '-'}
@@ -583,7 +579,7 @@ export const UploadPage: React.FC = () => {
                       {formatNumberId(uploadResult.jumlah_baris, 0)} Baris)
                     </h3>
                   </div>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-header-light dark:bg-header-dark text-text-muted-light dark:text-text-muted-dark">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-header-light dark:bg-header-dark text-text-muted-light dark:text-text-secondary-dark">
                     <Lock className="w-3 h-3" />
                     <span>Pratinjau Baca-Saja (v0)</span>
                   </span>
@@ -608,7 +604,7 @@ export const UploadPage: React.FC = () => {
                           key={idx}
                           className="hover:bg-canvas-light dark:hover:bg-canvas-dark/50"
                         >
-                          <td className="py-2.5 px-3 text-center text-xs text-text-muted-light dark:text-text-muted-dark">
+                          <td className="py-2.5 px-3 text-center text-xs text-text-muted-light dark:text-text-secondary-dark">
                             {idx + 1}
                           </td>
                           {previewColumns.map((colName) => (

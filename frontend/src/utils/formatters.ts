@@ -7,6 +7,27 @@ const numberFormatterInt = new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 0,
 });
 
+const numberFormatterCache = new Map<number, Intl.NumberFormat>();
+function getDecimalFormatter(maxDecimals: number): Intl.NumberFormat {
+  let formatter = numberFormatterCache.get(maxDecimals);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxDecimals,
+    });
+    numberFormatterCache.set(maxDecimals, formatter);
+  }
+  return formatter;
+}
+
+const dateTimeFormatterId = new Intl.DateTimeFormat('id-ID', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 /** Format angka dengan titik ribuan dan koma desimal (standar id-ID) */
 export function formatNumberId(
   value: number | null | undefined,
@@ -18,10 +39,7 @@ export function formatNumberId(
   if (Number.isInteger(value) || maxDecimals === 0) {
     return numberFormatterInt.format(value);
   }
-  return new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: maxDecimals,
-  }).format(value);
+  return getDecimalFormatter(maxDecimals).format(value);
 }
 
 /** Format persentase standar Indonesia (contoh: 96,4%) */
@@ -29,11 +47,21 @@ export function formatPercentId(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return '-';
   }
-  const formatted = new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
+  const formatted = getDecimalFormatter(2).format(value);
   return `${formatted}%`;
+}
+
+/** Format rasio kelipatan agar nilai kecil non-nol tidak dibulatkan menjadi 0x */
+export function formatRatioMultiplierId(
+  value: number | null | undefined
+): string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return '-';
+  }
+  if (value !== 0 && Math.abs(value) < 0.01) {
+    return `${getDecimalFormatter(4).format(value)}x`;
+  }
+  return `${getDecimalFormatter(2).format(value)}x`;
 }
 
 /** Format ukuran berkas dalam B, KB, atau MB */
@@ -56,21 +84,13 @@ export function formatFileSizeId(bytes: number | null | undefined): string {
 export function formatDateTimeId(isoString: string | null | undefined): string {
   if (!isoString) return '-';
   try {
-    // Pastikan string ISO tanpa zona waktu diperlakukan konsisten
-    const normalizedIso =
-      isoString.endsWith('Z') || isoString.includes('+')
-        ? isoString
-        : `${isoString}Z`;
+    // Pastikan string ISO tanpa zona waktu diperlakukan konsisten (dukung Z, +HH:MM, -HH:MM)
+    const hasTz = /([Zz]|[+-]\d{2}:?\d{2})$/.test(isoString);
+    const normalizedIso = hasTz ? isoString : `${isoString}Z`;
     const date = new Date(normalizedIso);
     if (Number.isNaN(date.getTime())) return '-';
 
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+    return dateTimeFormatterId.format(date);
   } catch {
     return '-';
   }
@@ -129,12 +149,27 @@ export function normalizeDataTypeLabel(
   return 'text';
 }
 
-/** Format nilai sel tabel pratinjau agar angka terformat id-ID dan nilai kosong tampil '-' */
-export function formatCellValueId(value: unknown): string {
+/** Deteksi apakah nama kolom merepresentasikan tahun kalender */
+export function isYearColumnName(colName?: string | null): boolean {
+  if (!colName) return false;
+  const lower = colName.trim().toLowerCase();
+  return lower === 'tahun' || lower === 'year' || lower.startsWith('tahun_') || lower.endsWith('_tahun') || lower.startsWith('year_') || lower.endsWith('_year');
+}
+
+/** Format nilai sel tabel pratinjau agar angka terformat id-ID, tahun 4 digit tanpa titik ribuan, dan nilai kosong tampil '-' */
+export function formatCellValueId(value: unknown, colName?: string | null): string {
   if (value === null || value === undefined || value === '') {
     return '-';
   }
   if (typeof value === 'number') {
+    if (
+      isYearColumnName(colName) &&
+      Number.isInteger(value) &&
+      value >= 1900 &&
+      value <= 2100
+    ) {
+      return String(value);
+    }
     return formatNumberId(value, 4);
   }
   if (typeof value === 'boolean') {

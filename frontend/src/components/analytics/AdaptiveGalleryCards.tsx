@@ -484,7 +484,7 @@ export const CategoryBarAndDonutCards: React.FC<
           <span className="block text-xs font-semibold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
             Total {primaryNumeric} (Homogen)
           </span>
-          <span className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <span className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             Terdistribusi pada {formatNumberId(totalGroups, 0)} {primaryCategory}
           </span>
         </div>
@@ -495,23 +495,24 @@ export const CategoryBarAndDonutCards: React.FC<
 
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <PieChart margin={{ top: 12, right: 32, bottom: 12, left: 32 }}>
             <Pie
               data={donutEvaluation.slices}
               dataKey="value"
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={height > 300 ? 75 : 52}
-              outerRadius={height > 300 ? 125 : 86}
+              innerRadius={height > 300 ? 68 : 44}
+              outerRadius={height > 300 ? 112 : 70}
               paddingAngle={2}
-              label={({ name, percent }) =>
-                `${
-                  String(name).length > 14
-                    ? `${String(name).slice(0, 12)}..`
-                    : name
-                } (${formatPercentId(percent)})`
-              }
+              label={({ name, percent }) => {
+                if (typeof percent === 'number' && percent < 4) return '';
+                const shortName =
+                  String(name).length > 12
+                    ? `${String(name).slice(0, 10)}..`
+                    : name;
+                return `${shortName} (${formatPercentId(percent)})`;
+              }}
               labelLine={true}
             >
               {donutEvaluation.slices.map((slice, idx) => {
@@ -561,7 +562,7 @@ export const CategoryBarAndDonutCards: React.FC<
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className="w-3 h-3 rounded-xs flex-shrink-0"
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
                   style={{
                     backgroundColor: tokenStyle.fill,
                     opacity: tokenStyle.fillOpacity,
@@ -1181,7 +1182,10 @@ export const TrendLineAndTimeHeatmapCards: React.FC<
     const labelWidth = 155;
     const headerHeight = 40;
     const legendHeight = 46;
-    const svgWidth = Math.max(460, labelWidth + periods.length * cellWidth + 24);
+    const svgWidth = Math.max(
+      labelWidth + 520,
+      labelWidth + periods.length * cellWidth + 24
+    );
     const svgHeight =
       headerHeight + displayedRows.length * cellHeight + legendHeight;
     const valSpan =
@@ -1250,17 +1254,23 @@ export const TrendLineAndTimeHeatmapCards: React.FC<
                       : 0;
 
                   // Skala satu rona dari token utama (--color-brand-primary)
+                  // Melompati zona mati kontras (0,60-0,81) agar kontras teks >= 4,5:1 di Light & Dark Mode:
+                  // - ratio < 0,65 -> opasitas 0,14..0,58 + text-primary (>= 4,90:1)
+                  // - ratio >= 0,65 -> opasitas 0,82..0,96 + surface (>= 4,63:1)
                   const fillToken = isNull
                     ? 'var(--color-header)'
                     : 'var(--color-brand-primary)';
-                  const fillOpacity = isNull
-                    ? 1
-                    : Number((0.14 + ratio * 0.8).toFixed(2));
-
-                  const textFill =
-                    !isNull && fillOpacity >= 0.56
-                      ? 'var(--color-surface)'
-                      : 'var(--color-text-primary)';
+                  let fillOpacity = 1;
+                  let textFill = 'var(--color-text-primary)';
+                  if (!isNull) {
+                    if (ratio < 0.65) {
+                      fillOpacity = Number((0.14 + (ratio / 0.65) * 0.44).toFixed(2));
+                      textFill = 'var(--color-text-primary)';
+                    } else {
+                      fillOpacity = Number((0.82 + ((ratio - 0.65) / 0.35) * 0.14).toFixed(2));
+                      textFill = 'var(--color-surface)';
+                    }
+                  }
 
                   return (
                     <g key={`hcell-${row.rowLabel}-${periods[colIdx]}`}>
@@ -1490,7 +1500,7 @@ export const TrendLineAndTimeHeatmapCards: React.FC<
         title="5. Heatmap Kelompok × Periode (Time Series Heatmap)"
         subtitle={`Matriks ${
           canUseGroupBy && primaryCategory ? primaryCategory : 'Indikator'
-        } × ${timeColumn} untuk ${primaryNumeric} (Setara tampilan Wilayah × Tahun di desain)`}
+        } × ${timeColumn} untuk ${primaryNumeric}`}
         chartTypeSlug="heatmap_kelompok_periode"
         datasetName={datasetName}
         icon={<Grid className="w-5 h-5" />}
@@ -1510,7 +1520,7 @@ export const TrendLineAndTimeHeatmapCards: React.FC<
         conditionExplanation={`Kolom "${primaryCategory}" memiliki ${formatNumberId(
           categoryUniqueCount,
           0
-        )} kelompok unik (melebihi batas 30 kelompok pada endpoint /eda/trend). Pilih kolom kategori dengan maksimal 30 nilai unik.`}
+        )} kelompok unik (melebihi batas 30 kelompok untuk tampilan matriks tren). Pilih kolom kategori dengan maksimal 30 nilai unik.`}
         onOpenFullscreen={() => setIsHeatmapFullscreen(true)}
       >
         {renderTimeHeatmapSvg(76, 36)}
@@ -1808,7 +1818,7 @@ export const GroupBubbleScatterCard: React.FC<GroupBubbleScatterCardProps> = ({
   const renderScatterChart = (height: number) => (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart margin={{ top: 16, right: 24, left: 16, bottom: 28 }}>
+        <ScatterChart margin={{ top: 24, right: 24, left: 24, bottom: 32 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis
             type="number"
@@ -1845,10 +1855,12 @@ export const GroupBubbleScatterCard: React.FC<GroupBubbleScatterCardProps> = ({
               value: `Sumbu Y: ${secondaryNumeric}`,
               angle: -90,
               position: 'insideLeft',
+              offset: 6,
               style: {
                 fill: 'var(--color-text-secondary)',
                 fontSize: '12px',
                 fontFamily: "'JetBrains Mono', monospace",
+                textAnchor: 'middle',
               },
             }}
           />
@@ -2040,12 +2052,12 @@ export const B07GalleryCardsSection: React.FC<B07GalleryCardsSectionProps> = ({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-          Diagram Matriks Lintas Kategori & Hierarki Multi-Level (Saklar B-07)
-        </h3>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
+          Diagram Matriks Lintas Kategori & Hierarki Multi-Level
+        </h2>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
         {/* 4. Heatmap Matriks 2D (Kategori × Kategori) */}
         <ChartCardShell
           title="4. Heatmap Matriks 2D"
@@ -2053,9 +2065,9 @@ export const B07GalleryCardsSection: React.FC<B07GalleryCardsSectionProps> = ({
           chartTypeSlug="heatmap_matriks_2d"
           datasetName={datasetName}
           icon={<Layers className="w-5 h-5" />}
-          ariaSummary="Kartu Heatmap Matriks 2D lintas kategori menunggu dukungan endpoint backend B-07."
+          ariaSummary="Kartu Heatmap Matriks 2D lintas kategori belum tersedia pada server saat ini."
           isDisabledB07={!isB07Enabled}
-          b07Explanation="Menunggu dukungan backend (B-07): Endpoint agregasi matriks 2D lintas kategori (GET /datasets/{id}/analysis/matrix) belum tersedia di server."
+          b07Explanation="Diagram matriks silang dua kategori memerlukan dukungan agregasi khusus pada server yang belum diaktifkan saat ini."
           isLoading={isB07Enabled && isMatrixLoading}
         >
           {isB07Enabled && matrix2dData && (
@@ -2074,9 +2086,9 @@ export const B07GalleryCardsSection: React.FC<B07GalleryCardsSectionProps> = ({
           chartTypeSlug="hierarchy_bubbles"
           datasetName={datasetName}
           icon={<Share2 className="w-5 h-5" />}
-          ariaSummary="Kartu Hierarchy Bubbles menunggu dukungan endpoint backend B-07."
+          ariaSummary="Kartu Hierarchy Bubbles belum tersedia pada server saat ini."
           isDisabledB07={!isB07Enabled}
-          b07Explanation="Menunggu dukungan backend (B-07): Endpoint agregasi pohon hierarki bertingkat (GET /datasets/{id}/analysis/hierarchy) belum tersedia di server."
+          b07Explanation="Diagram lingkaran bersarang memerlukan dukungan agregasi pohon hierarki pada server yang belum diaktifkan saat ini."
           isLoading={isB07Enabled && isHierarchyLoading}
         >
           {isB07Enabled && hierarchyData && (
@@ -2095,9 +2107,9 @@ export const B07GalleryCardsSection: React.FC<B07GalleryCardsSectionProps> = ({
           chartTypeSlug="hierarchy_sunburst"
           datasetName={datasetName}
           icon={<Sun className="w-5 h-5" />}
-          ariaSummary="Kartu Hierarchy Sunburst menunggu dukungan endpoint backend B-07."
+          ariaSummary="Kartu Hierarchy Sunburst belum tersedia pada server saat ini."
           isDisabledB07={!isB07Enabled}
-          b07Explanation="Menunggu dukungan backend (B-07): Endpoint agregasi pohon hierarki bertingkat (GET /datasets/{id}/analysis/hierarchy) belum tersedia di server."
+          b07Explanation="Diagram cincin hierarki memerlukan dukungan agregasi pohon hierarki pada server yang belum diaktifkan saat ini."
           isLoading={isB07Enabled && isHierarchyLoading}
         >
           {isB07Enabled && hierarchyData?.root && (

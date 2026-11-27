@@ -359,7 +359,7 @@ export const ReviewImpactComparisonPanel: React.FC<
               {activeBarisDibuang > 0 ? (
                 <div className="text-2xl font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark flex items-center gap-2 pt-0.5">
                   <span>{formatNumberId(barisSaatIni, 0)}</span>
-                  <ArrowRight className="w-5 h-5 text-text-muted-light dark:text-text-muted-dark" />
+                  <ArrowRight className="w-5 h-5 text-text-muted-light dark:text-text-secondary-dark" />
                   <span className="text-brand-primary-light dark:text-brand-primary-dark">
                     {formatNumberId(barisSesudahPratinjau, 0)}
                   </span>
@@ -372,7 +372,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                   </span>
                 </div>
               )}
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
                 {activeBarisDibuang > 0
                   ? `Pratinjau v${dataset?.versi_bersih ?? 1} → v${
                       (dataset?.versi_bersih ?? 1) + 1
@@ -405,7 +405,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                 {formatNumberId(jumlahPerubahanManual, 0)}{' '}
                 <span className="text-sm font-semibold">Perubahan</span>
               </div>
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
                 {editsSummary
                   ? `${formatNumberId(editsSummary.sel_unik, 0)} sel unik pada ${formatNumberId(
                       editsSummary.baris_unik,
@@ -435,7 +435,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                 ? formatPercentId(cleanReport.kelengkapan_persen)
                 : '-'}
             </div>
-            <p className="text-xs text-text-muted-light dark:text-text-muted-dark leading-snug">
+            <p className="text-xs text-text-muted-light dark:text-text-secondary-dark leading-snug">
               Dihitung saat pembersihan terakhir; belum memperhitungkan edit dan
               review sesudahnya.
             </p>
@@ -511,7 +511,7 @@ export const ReviewImpactComparisonPanel: React.FC<
             ))}
           </div>
 
-          <span className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+          <span className="text-xs text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
             Menampilkan item yang telah ditinjau (maks. 10 baris per halaman)
           </span>
         </div>
@@ -549,7 +549,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                   <tr>
                     <td
                       colSpan={7}
-                      className="py-10 text-center text-sm text-text-muted-light dark:text-text-muted-dark"
+                      className="py-10 text-center text-sm text-text-muted-light dark:text-text-secondary-dark"
                     >
                       Belum ada item anomali yang ditinjau (Diterima, Ditolak,
                       atau Diperbaiki) sesuai filter ini.
@@ -584,7 +584,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                         {/* 3. Nilai Sebelum */}
                         <td className="py-3 px-4 font-mono text-xs tabular-numbers whitespace-nowrap align-top">
                           {item.nilaiSebelum === '-' ? (
-                            <span className="text-text-muted-light dark:text-text-muted-dark">
+                            <span className="text-text-muted-light dark:text-text-secondary-dark">
                               -
                             </span>
                           ) : (
@@ -626,7 +626,7 @@ export const ReviewImpactComparisonPanel: React.FC<
                             </span>
                           )}
                           {item.statusType === 'ditolak_dibuang' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark line-through">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark line-through">
                               <X className="w-3.5 h-3.5" />
                               <span>
                                 Sudah dibuang (v{dataset?.versi_bersih ?? 1})

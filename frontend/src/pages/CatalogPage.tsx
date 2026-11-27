@@ -20,6 +20,7 @@ import {
   ProcessingStatusBadge,
 } from '@/components/common/StatusBadge';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getDatasets } from '@/services/datasetService';
 import {
   formatDateTimeId,
@@ -29,6 +30,7 @@ import {
 } from '@/utils/formatters';
 
 export const CatalogPage: React.FC = () => {
+  useDocumentTitle('Katalog Dataset');
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,9 +105,9 @@ export const CatalogPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
-              Katalog Dataset Instansi
-            </h2>
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
+              Katalog Dataset
+            </h1>
             <span className="px-3 py-1 rounded-full text-xs font-semibold tabular-numbers bg-brand-primary-light/10 dark:bg-brand-primary-dark/15 text-brand-primary-light dark:text-brand-primary-dark">
               {formatNumberId(datasets.length, 0)} Dataset Terdaftar
             </span>
@@ -161,7 +163,7 @@ export const CatalogPage: React.FC = () => {
       {/* Bilah Pencarian & Filter Sisi Klien (F-05) */}
       <div className="p-4 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-secondary-dark" />
           <input
             type="text"
             value={searchQuery}
@@ -240,7 +242,7 @@ export const CatalogPage: React.FC = () => {
 
       {/* Tabel Katalog Dataset (F-04) */}
       {isLoading ? (
-        <div className="p-12 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+        <div className="p-12 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
           Memuat daftar katalog dataset...
         </div>
       ) : !isError && datasets.length === 0 ? (
@@ -327,13 +329,13 @@ export const CatalogPage: React.FC = () => {
                       </td>
 
                       {/* Dimensi Data (Di balik saklar B-08; tampil '-' saat false) */}
-                      <td className="py-3.5 px-4 font-mono text-xs text-text-secondary-light dark:text-text-secondary-dark tabular-numbers">
+                      <td className="py-3.5 px-4 font-mono text-sm text-text-secondary-light dark:text-text-secondary-dark tabular-numbers">
                         {hasExtendedMeta && ds.jumlah_baris !== undefined ? (
                           <div>
                             <div className="font-semibold text-text-primary-light dark:text-text-primary-dark">
                               {formatNumberId(ds.jumlah_baris, 0)} baris
                             </div>
-                            <div className="text-text-muted-light dark:text-text-muted-dark">
+                            <div className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
                               {formatNumberId(ds.jumlah_kolom, 0)} kolom
                               {ds.file_size_bytes !== undefined
                                 ? ` • ${formatFileSizeId(ds.file_size_bytes)}`
@@ -351,21 +353,21 @@ export const CatalogPage: React.FC = () => {
                       </td>
 
                       {/* Status Anomali ('Belum diproses' untuk Uploaded; '-' saat B-08 false) */}
-                      <td className="py-3.5 px-4 text-xs">
+                      <td className="py-3.5 px-4 text-sm">
                         {ds.status === 'uploaded' ? (
-                          <span className="text-text-muted-light dark:text-text-muted-dark italic">
+                          <span className="text-text-secondary-light dark:text-text-secondary-dark italic">
                             Belum diproses
                           </span>
                         ) : hasExtendedMeta && ds.anomali_pending !== undefined ? (
                           ds.anomali_pending > 0 ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold tabular-numbers bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tabular-numbers bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
                               <AlertTriangle className="w-3.5 h-3.5" />
                               <span>
                                 {formatNumberId(ds.anomali_pending, 0)} Pending
                               </span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>0 Bersih</span>
                             </span>
@@ -378,7 +380,7 @@ export const CatalogPage: React.FC = () => {
                       </td>
 
                       {/* Tanggal Unggah */}
-                      <td className="py-3.5 px-4 font-mono text-xs text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
+                      <td className="py-3.5 px-4 font-mono text-sm text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
                         {formatDateTimeId(ds.uploaded_at)}
                       </td>
 

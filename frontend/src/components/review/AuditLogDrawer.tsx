@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ArrowRight,
   Clock,
@@ -13,6 +13,7 @@ import {
   formatCellValueId,
   formatDateTimeId,
   formatNumberId,
+  formatPercentId,
 } from '@/utils/formatters';
 
 interface AuditLogDrawerProps {
@@ -39,16 +40,56 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
   isFetching,
   onRefresh,
 }) => {
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isOpen) return;
+    triggerElementRef.current = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusTimer = window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 20);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusables = Array.from(
+          drawerRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !drawerRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last || !drawerRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      triggerElementRef.current?.focus();
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -57,7 +98,7 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-canvas-dark/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex justify-end bg-canvas-dark/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="drawer-audit-log-title"
@@ -66,22 +107,25 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
       <div className="flex-1" onClick={onClose} aria-hidden="true" />
 
       {/* Kontainer Slide-over Drawer */}
-      <div className="w-full max-w-4xl h-full bg-surface-light dark:bg-surface-dark border-l border-border-light dark:border-border-dark shadow-2xl flex flex-col overflow-hidden">
+      <div
+        ref={drawerRef}
+        className="w-full max-w-4xl h-full bg-surface-light dark:bg-surface-dark border-l border-border-light dark:border-border-dark shadow-2xl flex flex-col overflow-hidden"
+      >
         {/* Header Drawer */}
         <div className="px-6 py-4 bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-button bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark">
-              <History className="w-5 h-5" />
+              <History className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h3
+              <h2
                 id="drawer-audit-log-title"
                 className="text-base font-bold text-text-primary-light dark:text-text-primary-dark"
               >
                 Riwayat Perubahan Data (Audit Log)
-              </h3>
+              </h2>
               <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                Rekam jejak koreksi nilai sel manual beserta nomor baris file asli, alasan, dan pengedit.
+                Rekam jejak koreksi nilai sel manual beserta nomor baris berkas asli, alasan, dan pengedit.
               </p>
             </div>
           </div>
@@ -91,20 +135,22 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
               type="button"
               onClick={onRefresh}
               disabled={isFetching}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors min-h-control"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`}
+                aria-hidden="true"
               />
               <span>Segarkan</span>
             </button>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Tutup drawer Audit Log"
-              className="p-2 rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors min-h-control"
+              className="inline-flex items-center justify-center min-w-[38px] p-2 rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -145,10 +191,10 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
                   </span>
                   <span className="text-lg font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-0.5 block">
                     {ringkasan.persen_baris_diedit !== null
-                      ? `${formatNumberId(ringkasan.persen_baris_diedit, 2)}%`
+                      ? formatPercentId(ringkasan.persen_baris_diedit)
                       : '-'}
                   </span>
-                  <span className="text-xs text-text-muted-light dark:text-text-muted-dark font-mono tabular-numbers">
+                  <span className="text-xs text-text-muted-light dark:text-text-secondary-dark font-mono tabular-numbers">
                     ({formatNumberId(ringkasan.baris_unik, 0)} /{' '}
                     {formatNumberId(ringkasan.baris_bersih, 0)} baris)
                   </span>
@@ -171,12 +217,12 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
           {/* Tabel Riwayat Audit Log */}
           <div className="rounded-card border border-border-light dark:border-border-dark overflow-hidden">
             {isLoading ? (
-              <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+              <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
                 Memuat riwayat perubahan data...
               </div>
             ) : editsList.length === 0 ? (
               <div className="p-12 text-center space-y-2">
-                <Edit3 className="w-8 h-8 mx-auto text-text-muted-light dark:text-text-muted-dark" />
+                <Edit3 className="w-8 h-8 mx-auto text-text-muted-light dark:text-text-secondary-dark" />
                 <p className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
                   Belum Ada Riwayat Edit Manual
                 </p>
@@ -186,25 +232,26 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse" aria-label="Tabel Riwayat Perubahan Data Manual">
                   <thead>
                     <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-                      <th className="py-3 px-4 whitespace-nowrap">Versi</th>
+                      <th scope="col" className="py-3 px-4 whitespace-nowrap">Versi</th>
                       <th
+                        scope="col"
                         className="py-3 px-4 whitespace-nowrap"
-                        title="Nomor baris di file CSV/Excel asli (baris 1 adalah header)"
+                        title="Nomor baris pada berkas asli (baris 1 adalah header)"
                       >
-                        Baris File
+                        No. Baris
                       </th>
-                      <th className="py-3 px-4 whitespace-nowrap">Kolom</th>
-                      <th className="py-3 px-4 whitespace-nowrap">
+                      <th scope="col" className="py-3 px-4 whitespace-nowrap">Kolom</th>
+                      <th scope="col" className="py-3 px-4 whitespace-nowrap">
                         Nilai Lama → Nilai Baru
                       </th>
-                      <th className="py-3 px-4">Alasan Perubahan</th>
-                      <th className="py-3 px-4 whitespace-nowrap">
+                      <th scope="col" className="py-3 px-4">Alasan Perubahan</th>
+                      <th scope="col" className="py-3 px-4 whitespace-nowrap">
                         Diubah Oleh
                       </th>
-                      <th className="py-3 px-4 whitespace-nowrap">Waktu</th>
+                      <th scope="col" className="py-3 px-4 whitespace-nowrap">Waktu</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
@@ -213,43 +260,40 @@ export const AuditLogDrawer: React.FC<AuditLogDrawerProps> = ({
                         key={item.id}
                         className="hover:bg-canvas-light dark:hover:bg-canvas-dark/50 transition-colors"
                       >
-                        <td className="py-3 px-4 font-mono text-xs font-bold whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-full bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark">
+                        <td className="py-3 px-4 font-mono text-sm font-bold whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark">
                             v{item.versi_baru}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs font-bold tabular-numbers whitespace-nowrap text-text-primary-light dark:text-text-primary-dark">
-                          #{item.baris_di_file_asli}
-                          <span className="block text-[11px] font-normal text-text-muted-light dark:text-text-muted-dark">
-                            (idx: {item.row_index})
-                          </span>
+                        <td className="py-3 px-4 font-mono text-sm font-bold tabular-numbers whitespace-nowrap text-text-primary-light dark:text-text-primary-dark">
+                          #{formatNumberId(item.baris_di_file_asli, 0)}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs font-semibold whitespace-nowrap text-brand-primary-light dark:text-brand-primary-dark">
+                        <td className="py-3 px-4 font-mono text-sm font-semibold whitespace-nowrap text-brand-primary-light dark:text-brand-primary-dark">
                           {item.kolom}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs tabular-numbers whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono text-sm tabular-numbers whitespace-nowrap">
                           <div className="inline-flex items-center gap-2">
                             <span className="px-2 py-0.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark line-through">
                               {formatCellValueId(item.nilai_lama)}
                             </span>
-                            <ArrowRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark flex-shrink-0" />
+                            <ArrowRight className="w-3.5 h-3.5 text-text-secondary-light dark:text-text-secondary-dark flex-shrink-0" aria-hidden="true" />
                             <span className="px-2 py-0.5 rounded-button bg-modified-bg-light dark:bg-modified-bg-dark border-l-audit border-l-modified-border-light dark:border-l-modified-border-dark text-text-primary-light dark:text-text-primary-dark font-bold">
                               {formatCellValueId(item.nilai_baru)}
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-xs text-text-primary-light dark:text-text-primary-dark min-w-[200px]">
+                        <td className="py-3 px-4 text-sm text-text-primary-light dark:text-text-primary-dark min-w-[200px]">
                           {item.alasan}
                         </td>
-                        <td className="py-3 px-4 text-xs font-mono whitespace-nowrap text-text-secondary-light dark:text-text-secondary-dark">
+                        <td className="py-3 px-4 text-sm font-mono whitespace-nowrap text-text-secondary-light dark:text-text-secondary-dark">
                           <span className="inline-flex items-center gap-1">
-                            <User className="w-3.5 h-3.5" />
+                            <User className="w-3.5 h-3.5" aria-hidden="true" />
                             <span>{item.diubah_oleh}</span>
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-xs font-mono tabular-numbers whitespace-nowrap text-text-muted-light dark:text-text-muted-dark">
+                        <td className="py-3 px-4 text-sm font-mono tabular-numbers whitespace-nowrap text-text-secondary-light dark:text-text-secondary-dark">
                           <span className="inline-flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
+                            <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                             <span>{formatDateTimeId(item.waktu)}</span>
                           </span>
                         </td>

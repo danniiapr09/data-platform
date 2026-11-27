@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
+import { useWorkspaceTabState } from '@/context/WorkspaceTabStateContext';
 import { Button } from '@/components/common/Button';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
 import {
@@ -161,16 +162,46 @@ export const AnalyticsTab: React.FC = () => {
     return list;
   }, [compareOptions, edaOverview]);
 
-  // State Pilihan Kolom di UI (segera merespons klik checkbox)
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedNumerics, setSelectedNumerics] = useState<string[]>([]);
-  const [selectedTimeColumn, setSelectedTimeColumn] = useState<string | null>(
-    null
+  const { state: tabMemory, updateTab3 } = useWorkspaceTabState();
+
+  // State Pilihan Kolom di UI (dipertahankan di memori React saat berpindah antar-tab)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    () => tabMemory.tab3.selectedCategories ?? []
   );
-  const [manualTimeColumn, setManualTimeColumn] = useState<string>('');
-  const [aggregation, setAggregation] = useState<AggregationFunction>('sum');
+  const [selectedNumerics, setSelectedNumerics] = useState<string[]>(
+    () => tabMemory.tab3.selectedNumerics ?? []
+  );
+  const [selectedTimeColumn, setSelectedTimeColumn] = useState<string | null>(
+    () => tabMemory.tab3.selectedTimeColumn ?? null
+  );
+  const [manualTimeColumn, setManualTimeColumn] = useState<string>(
+    () => tabMemory.tab3.manualTimeColumn ?? ''
+  );
+  const [aggregation, setAggregation] = useState<AggregationFunction>(
+    () => tabMemory.tab3.aggregation ?? 'sum'
+  );
   const [hasInitializedSelection, setHasInitializedSelection] =
-    useState<boolean>(false);
+    useState<boolean>(() => tabMemory.tab3.hasInitialized ?? false);
+
+  useEffect(() => {
+    if (!hasInitializedSelection) return;
+    updateTab3({
+      selectedCategories,
+      selectedNumerics,
+      selectedTimeColumn,
+      manualTimeColumn,
+      aggregation,
+      hasInitialized: hasInitializedSelection,
+    });
+  }, [
+    selectedCategories,
+    selectedNumerics,
+    selectedTimeColumn,
+    manualTimeColumn,
+    aggregation,
+    hasInitializedSelection,
+    updateTab3,
+  ]);
 
   // Fungsi penentu pilihan kolom default yang menghindari kolom pengenal (id, kode, no, nomor) - Butir g
   const applySmartDefaults = useMemo(() => {
@@ -367,7 +398,7 @@ export const AnalyticsTab: React.FC = () => {
   // 1. Kondisi Loading Metadata Dataset
   if (isDatasetLoading) {
     return (
-      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         Memuat status dataset untuk Dashboard Analitik...
       </div>
     );
@@ -386,8 +417,8 @@ export const AnalyticsTab: React.FC = () => {
           </h2>
           <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-lg mx-auto">
             Dashboard Analitik dan Galeri Diagram hanya bekerja pada versi data
-            bersih (`CleanData`). Silakan jalankan pembersihan otomatis terlebih
-            dahulu pada Tab 2.
+            bersih. Silakan jalankan pembersihan otomatis terlebih dahulu pada
+            Tab 2.
           </p>
         </div>
         <div className="pt-2">
@@ -655,7 +686,7 @@ export const AnalyticsTab: React.FC = () => {
                 {hiddenCardsExplanations.length > 0 && (
                   <div className="p-4 rounded-card bg-header-light/60 dark:bg-header-dark/60 border border-border-light dark:border-border-dark space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-                      <EyeOff className="w-4 h-4 text-text-muted-light dark:text-text-muted-dark" />
+                      <EyeOff className="w-4 h-4 text-text-muted-light dark:text-text-secondary-dark" />
                       <span>
                         Kartu yang Disembunyikan karena Pilihan Kolom Saat Ini (
                         {formatNumberId(hiddenCardsExplanations.length, 0)})

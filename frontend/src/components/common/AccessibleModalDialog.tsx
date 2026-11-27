@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
 export interface AccessibleModalDialogProps {
@@ -28,15 +28,20 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
   maxWidthClassName = 'max-w-6xl',
   children,
 }) => {
+  const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
 
     // Simpan elemen tombol pemicu sebelum modal mengambil fokus
     triggerElementRef.current = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     // Fokus ke tombol tutup atau elemen interaktif pertama di dalam modal
     const focusTimer = window.setTimeout(() => {
@@ -46,7 +51,7 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -62,12 +67,12 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
         const last = focusables[focusables.length - 1];
 
         if (e.shiftKey) {
-          if (document.activeElement === first) {
+          if (document.activeElement === first || !dialogRef.current.contains(document.activeElement)) {
             e.preventDefault();
             last.focus();
           }
         } else {
-          if (document.activeElement === last) {
+          if (document.activeElement === last || !dialogRef.current.contains(document.activeElement)) {
             e.preventDefault();
             first.focus();
           }
@@ -79,6 +84,7 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
       // Kembalikan fokus ke tombol pemicu
       if (
         triggerElementRef.current &&
@@ -87,13 +93,13 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
         triggerElementRef.current.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-canvas-dark/75 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-canvas-dark/75 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -104,14 +110,14 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="accessible-modal-title"
+        aria-labelledby={titleId}
         className={`w-full ${maxWidthClassName} rounded-modal bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
       >
         {/* Header Modal */}
         <div className="px-6 py-4 bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
           <div className="min-w-0">
             <h2
-              id="accessible-modal-title"
+              id={titleId}
               className="text-base font-bold text-text-primary-light dark:text-text-primary-dark truncate"
             >
               {title}
@@ -129,11 +135,11 @@ export const AccessibleModalDialog: React.FC<AccessibleModalDialogProps> = ({
               ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              aria-label="Tutup dialog layar penuh (Esc)"
+              aria-label="Tutup dialog (Esc)"
               title="Tutup (Esc)"
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark hover:bg-header-light dark:hover:bg-header-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark hover:bg-header-light dark:hover:bg-header-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark min-h-control"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
               <span>Tutup</span>
             </button>
           </div>

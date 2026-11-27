@@ -21,7 +21,7 @@ export const ProcessingTimelineList: React.FC<ProcessingTimelineListProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         Memuat riwayat aktivitas pemrosesan...
       </div>
     );
@@ -29,7 +29,7 @@ export const ProcessingTimelineList: React.FC<ProcessingTimelineListProps> = ({
 
   if (historyLogs.length === 0) {
     return (
-      <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="py-6 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         {emptyText}
       </div>
     );
@@ -44,7 +44,7 @@ export const ProcessingTimelineList: React.FC<ProcessingTimelineListProps> = ({
             <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold uppercase bg-header-light dark:bg-header-dark text-brand-primary-light dark:text-brand-primary-dark">
               {log.langkah}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs font-mono text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+            <span className="inline-flex items-center gap-1 text-xs font-mono text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
               <Clock className="w-3.5 h-3.5" />
               <span>{formatDateTimeId(log.waktu)}</span>
             </span>
@@ -73,10 +73,10 @@ export const ProcessingTimelineCard: React.FC<ProcessingTimelineCardProps> = ({
         <div className="flex items-center gap-2">
           <History className="w-5 h-5 text-brand-cyan" />
           <h3 className="text-sm font-bold text-text-primary-light dark:text-text-primary-dark">
-            Linimasa Aktivitas Pemrosesan (F-10)
+            Linimasa Aktivitas Pemrosesan
           </h3>
         </div>
-        <span className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+        <span className="text-xs text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
           {formatNumberId(historyLogs.length, 0)} langkah tercatat
         </span>
       </div>

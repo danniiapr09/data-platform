@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
+import { useWorkspaceTabState } from '@/context/WorkspaceTabStateContext';
 import { Button } from '@/components/common/Button';
 import { showToast } from '@/components/common/Toast';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
@@ -119,16 +120,40 @@ export const AnomalyEditorTab: React.FC = () => {
     useState<AnomalyGroupBy>('jenis');
   const [summaryDataKolom, setSummaryDataKolom] = useState<string>('');
 
-  // State Filter Tabel & Anomali (F-14)
-  // Mendukung pemisahan Ditolak (aktif) vs Ditolak (sudah dibuang) sesuai Penyesuaian Wajib butir c
-  const [filterJenis, setFilterJenis] = useState<string | null>(null);
-  const [filterKolom, setFilterKolom] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<FilterStatusOption>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const { state: tabMemory, updateTab2 } = useWorkspaceTabState();
+
+  // State Filter Tabel & Anomali (disimpan di memori sesi; activeEditAnomalyId & selectedAnomalyIds tetap di-reset saat pindah tab)
+  const [filterJenis, setFilterJenis] = useState<string | null>(
+    () => tabMemory.tab2.filterJenis ?? null
+  );
+  const [filterKolom, setFilterKolom] = useState<string | null>(
+    () => tabMemory.tab2.filterKolom ?? null
+  );
+  const [filterStatus, setFilterStatus] = useState<FilterStatusOption>(
+    () => (tabMemory.tab2.filterStatus as FilterStatusOption) ?? null
+  );
+  const [searchQuery, setSearchQuery] = useState<string>(
+    () => tabMemory.tab2.searchQuery ?? ''
+  );
 
   // State Paginasi Grid (50 atau 100 baris per halaman)
-  const [pageSize, setPageSize] = useState<number>(50);
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(
+    () => tabMemory.tab2.pageSize ?? 50
+  );
+  const [currentPage, setCurrentPage] = useState<number>(
+    () => tabMemory.tab2.currentPage ?? 1
+  );
+
+  useEffect(() => {
+    updateTab2({
+      filterJenis: filterJenis ?? undefined,
+      filterKolom: filterKolom ?? undefined,
+      filterStatus: filterStatus ?? undefined,
+      searchQuery,
+      pageSize,
+      currentPage,
+    });
+  }, [filterJenis, filterKolom, filterStatus, searchQuery, pageSize, currentPage, updateTab2]);
 
   // State Paginasi Server-side jika anomali > 2.000
   const [serverAnomalyPage, setServerAnomalyPage] = useState<number>(1);
@@ -595,6 +620,25 @@ export const AnomalyEditorTab: React.FC = () => {
     rejectedClassification.alreadyDroppedRowIndices,
   ]);
 
+  // Helper Penyegaran Terfokus untuk Mutasi Status Anomali Tunggal (menghindari invalidasi query v0 & edits yang tidak berubah)
+  const invalidateAnomalyReviewQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ['dataset-detail', datasetId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['dataset-anomalies-summary', datasetId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['dataset-anomalies-items', datasetId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['dataset-apply-review-preview', datasetId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
+    ]);
+  };
+
   // Helper Penyegaran Seluruh Query Terkait (Tabel, Ringkasan Anomali, Pratinjau Apply Review, Header Workspace, Tab 1, Beranda)
   const invalidateAllRelatedQueries = async () => {
     await Promise.all([
@@ -680,7 +724,7 @@ export const AnomalyEditorTab: React.FC = () => {
     }) => patchAnomalyStatus(params.anomalyId, params.status),
     onSuccess: async (res) => {
       setSelectedAnomalyIds((prev) => prev.filter((id) => id !== res.id));
-      await invalidateAllRelatedQueries();
+      await invalidateAnomalyReviewQueries();
       const statusLabel =
         res.status === 'diterima'
           ? 'Diterima'
@@ -1163,7 +1207,7 @@ export const AnomalyEditorTab: React.FC = () => {
 
   if (isDatasetLoading) {
     return (
-      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         Memuat ruang kerja review anomali dan editor data...
       </div>
     );
@@ -1225,7 +1269,7 @@ export const AnomalyEditorTab: React.FC = () => {
                 <span className="line-through text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark">
                   {formatCellValueId(chg.nilai_lama)}
                 </span>
-                <ArrowRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark" />
+                <ArrowRight className="w-3.5 h-3.5 text-text-muted-light dark:text-text-secondary-dark" />
                 <strong className="text-anomaly-success-text-light dark:text-anomaly-success-text-dark">
                   {formatCellValueId(chg.nilai_baru)}
                 </strong>
@@ -1455,7 +1499,7 @@ export const AnomalyEditorTab: React.FC = () => {
                   aria-disabled="true"
                   aria-describedby="tooltip-apply-review-disabled"
                   onClick={(e) => e.preventDefault()}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control whitespace-nowrap"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control whitespace-nowrap"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
@@ -1528,7 +1572,7 @@ export const AnomalyEditorTab: React.FC = () => {
 
               {/* Kotak Pencarian Baris / Nilai / Alasan */}
               <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 text-text-muted-light dark:text-text-muted-dark absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-text-muted-light dark:text-text-secondary-dark absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -1542,7 +1586,7 @@ export const AnomalyEditorTab: React.FC = () => {
                     type="button"
                     onClick={() => setSearchQuery('')}
                     aria-label="Bersihkan pencarian"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-text-primary-light dark:hover:text-text-primary-dark"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1698,7 +1742,7 @@ export const AnomalyEditorTab: React.FC = () => {
                     type="button"
                     onClick={() => handlePrepareBulkByFilter('diterima')}
                     disabled={bulkReviewMutation.isPending}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-anomaly-success-text-light/40 dark:border-anomaly-success-text-dark/40 text-anomaly-success-text-light dark:text-anomaly-success-text-dark hover:bg-anomaly-success-bg-light dark:hover:bg-anomaly-success-bg-dark transition-colors min-h-[34px]"
+                    className="px-3 py-1.5 text-sm font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-anomaly-success-text-light/40 dark:border-anomaly-success-text-dark/40 text-anomaly-success-text-light dark:text-anomaly-success-text-dark hover:bg-anomaly-success-bg-light dark:hover:bg-anomaly-success-bg-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control"
                   >
                     Terima Semua Pending Sesuai Filter
                   </button>
@@ -1706,7 +1750,7 @@ export const AnomalyEditorTab: React.FC = () => {
                     type="button"
                     onClick={() => handlePrepareBulkByFilter('ditolak')}
                     disabled={bulkReviewMutation.isPending}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-anomaly-danger-text-light/40 dark:border-anomaly-danger-text-dark/40 text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark hover:bg-anomaly-danger-bg-light dark:hover:bg-anomaly-danger-bg-dark transition-colors min-h-[34px]"
+                    className="px-3 py-1.5 text-sm font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-anomaly-danger-text-light/40 dark:border-anomaly-danger-text-dark/40 text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark hover:bg-anomaly-danger-bg-light dark:hover:bg-anomaly-danger-bg-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control"
                   >
                     Tolak Semua Pending Sesuai Filter
                   </button>
@@ -1718,6 +1762,7 @@ export const AnomalyEditorTab: React.FC = () => {
             {bulkFilterConfirm && (
               <div
                 role="region"
+                aria-live="polite"
                 aria-label="Konfirmasi aksi massal berdasarkan filter"
                 className="p-3.5 rounded-card bg-header-light dark:bg-header-dark border-2 border-brand-primary-light dark:border-brand-primary-dark flex flex-wrap items-center justify-between gap-3"
               >
@@ -1816,7 +1861,7 @@ export const AnomalyEditorTab: React.FC = () => {
           </div>
         </div>
       ) : isInitialDataLoading ? (
-        <div className="p-12 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+        <div className="p-12 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
           Memuat data bersih, laporan pembersihan, dan pemetaan anomali...
         </div>
       ) : (
@@ -1892,7 +1937,7 @@ export const AnomalyEditorTab: React.FC = () => {
                   <strong className="font-mono tabular-numbers">
                     {formatNumberId(dataset?.baris_bersih, 0)}
                   </strong>{' '}
-                  baris data bersih (batas endpoint <code>clean-preview</code> saat ini sampai B-05 aktif).
+                  baris data bersih (batas pratinjau grid saat ini).
                 </span>
               </div>
             )}
@@ -1906,8 +1951,8 @@ export const AnomalyEditorTab: React.FC = () => {
              * ============================================================================ */
             <div className="rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark overflow-hidden">
               {/* Pembungkus Scroll Horizontal & Vertikal dengan Sticky Header & Sticky Kolom Pertama */}
-              <div className="overflow-x-auto max-h-[680px] overflow-y-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto max-h-[calc(100vh-300px)] min-h-[360px] overflow-y-auto">
+                <table className="w-full text-left border-collapse" aria-label="Grid Data Bersih dan Penanda Anomali">
                   <thead>
                     <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0 z-20">
                       {/* Kolom Sticky 1: Checkbox + Nomor Baris di File Asli ("Baris File") */}
@@ -1950,7 +1995,7 @@ export const AnomalyEditorTab: React.FC = () => {
                       <tr>
                         <td
                           colSpan={availableColumns.length + 2}
-                          className="py-12 text-center font-sans text-sm text-text-muted-light dark:text-text-muted-dark"
+                          className="py-12 text-center font-sans text-sm text-text-muted-light dark:text-text-secondary-dark"
                         >
                           Tidak ada baris data yang cocok dengan filter saat ini.
                         </td>
@@ -1982,8 +2027,12 @@ export const AnomalyEditorTab: React.FC = () => {
                           >
                             {/* Kolom Sticky 1: Checkbox + Baris File (#barisDiFileAsli) */}
                             <td
-                              className="py-3 px-4 sticky left-0 z-10 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark whitespace-nowrap align-top"
-                              title={`Baris ke-${row.barisDiFileAsli} pada file CSV/Excel asli (row_index database: ${row.rowIndex})`}
+                              className={`py-3 px-4 sticky left-0 z-10 border-r border-border-light dark:border-border-dark whitespace-nowrap align-top ${
+                                allRowRejected
+                                  ? 'bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark'
+                                  : 'bg-surface-light dark:bg-surface-dark'
+                              }`}
+                              title={`Baris ke-${row.barisDiFileAsli} pada berkas asli`}
                             >
                               <div className="flex items-center gap-2.5">
                                 <input
@@ -2126,7 +2175,7 @@ export const AnomalyEditorTab: React.FC = () => {
                             {/* Kolom Aksi Kurasi Baris (Selalu memakai anomaly.id, anomaly.row_index, anomaly.kolom dari backend) */}
                             <td className="py-2.5 px-4 whitespace-nowrap align-top text-right font-sans">
                               {rowAnomalies.length === 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-text-muted-light dark:text-text-muted-dark bg-header-light/60 dark:bg-header-dark/60">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-text-muted-light dark:text-text-secondary-dark bg-header-light/60 dark:bg-header-dark/60">
                                   <Check className="w-3.5 h-3.5 text-anomaly-success-text-light dark:text-anomaly-success-text-dark" />
                                   <span>Tervalidasi (Hanya-Baca)</span>
                                 </span>
@@ -2416,7 +2465,7 @@ export const AnomalyEditorTab: React.FC = () => {
                     </h3>
                   </div>
                   {isAnomaliesFetching && (
-                    <span className="text-xs text-text-muted-light dark:text-text-muted-dark">
+                    <span className="text-xs text-text-muted-light dark:text-text-secondary-dark">
                       Menyegarkan daftar...
                     </span>
                   )}
@@ -2462,7 +2511,7 @@ export const AnomalyEditorTab: React.FC = () => {
                         <tr>
                           <td
                             colSpan={6}
-                            className="py-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark"
+                            className="py-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark"
                           >
                             Memuat halaman anomali dari server...
                           </td>
@@ -2471,7 +2520,7 @@ export const AnomalyEditorTab: React.FC = () => {
                         <tr>
                           <td
                             colSpan={6}
-                            className="py-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark"
+                            className="py-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark"
                           >
                             Tidak ada anomali yang cocok dengan filter saat ini.
                           </td>
@@ -2575,7 +2624,7 @@ export const AnomalyEditorTab: React.FC = () => {
                                 )}
                                 {anom.status === 'ditolak' &&
                                   (isAlreadyDropped ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark line-through">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark line-through">
                                       <X className="w-3.5 h-3.5" />
                                       <span>
                                         Sudah dibuang (v
@@ -2605,7 +2654,7 @@ export const AnomalyEditorTab: React.FC = () => {
                                         aria-disabled="true"
                                         aria-describedby={droppedTooltipId}
                                         onClick={(e) => e.preventDefault()}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-60 cursor-not-allowed min-h-[34px]"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-60 cursor-not-allowed min-h-[34px]"
                                       >
                                         <Edit3 className="w-3.5 h-3.5" />
                                         <span>Edit</span>
@@ -2616,7 +2665,7 @@ export const AnomalyEditorTab: React.FC = () => {
                                       aria-disabled="true"
                                       aria-describedby={droppedTooltipId}
                                       onClick={(e) => e.preventDefault()}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-60 cursor-not-allowed min-h-[34px]"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-button bg-header-light dark:bg-header-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-60 cursor-not-allowed min-h-[34px]"
                                     >
                                       <RotateCcw className="w-3.5 h-3.5" />
                                       <span>Batalkan</span>

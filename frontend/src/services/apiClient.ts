@@ -48,10 +48,9 @@ apiClient.interceptors.response.use(
 
     if (!error.response) {
       userMessage =
-        'Koneksi ke server backend terputus. Pastikan server aktif di ' + baseURL;
+        'Tidak dapat terhubung ke server layanan data. Periksa koneksi jaringan atau pastikan server sedang aktif.';
     } else {
       const status = error.response.status;
-      // TODO(B-12): Mendukung format error JSON terstandar (detail, error_code, field, timestamp)
       const serverDetail = error.response.data?.detail;
       const configuredApiKey = import.meta.env.VITE_INTERNAL_API_KEY;
       const isApiKeyEmpty =
@@ -61,42 +60,43 @@ apiClient.interceptors.response.use(
         case 400:
           userMessage =
             serverDetail ||
-            'Permintaan data tidak valid. Silakan periksa kembali parameter input.';
+            'Permintaan tidak dapat diproses karena data atau pilihan belum sesuai. Silakan periksa kembali isian Anda.';
           break;
         case 401:
           if (isApiKeyEmpty) {
             userMessage =
-              'Autentikasi gagal (401): Kunci API (VITE_INTERNAL_API_KEY) belum dikonfigurasi di frontend/.env.';
+              'Akses belum terverifikasi. Silakan hubungi administrator untuk mengaktifkan kunci akses aplikasi.';
           } else {
             userMessage =
-              'Autentikasi gagal (401): Kunci API yang dikonfigurasi tidak cocok dengan server backend.';
+              'Verifikasi akses ditolak oleh server. Periksa kembali kredensial akses atau hubungi administrator.';
           }
           break;
         case 403:
           userMessage =
-            'Aksi ditolak. Peran (role) akun Anda tidak memiliki izin untuk tindakan ini.';
+            'Aksi ditolak. Peran akun Anda tidak memiliki izin untuk melakukan tindakan ini.';
           break;
         case 404:
           userMessage =
             serverDetail ||
-            'Data atau sumber daya yang diminta tidak ditemukan di server backend.';
+            'Data yang diminta tidak ditemukan. Pastikan dataset masih tersedia di katalog.';
           break;
         case 409:
           userMessage =
             serverDetail ||
-            'Terjadi konflik data (misalnya data sudah pernah diproses). Periksa opsi penimpaan.';
+            'Terjadi bentrokan versi data karena dataset sudah memiliki perubahan sebelumnya. Tinjau opsi konfirmasi sebelum melanjutkan.';
           break;
         case 422:
           userMessage =
-            'Entitas data tidak dapat diproses. Format berkas atau struktur skema tidak sesuai.';
+            serverDetail ||
+            'Format berkas atau nilai yang dikirim belum sesuai. Silakan periksa kembali data Anda.';
           break;
         case 500:
           userMessage =
-            'Terjadi kesalahan internal pada server backend. Silakan hubungi administrator.';
+            'Terjadi kendala pada server saat memproses permintaan. Silakan coba beberapa saat lagi atau hubungi administrator.';
           break;
         default:
           userMessage =
-            serverDetail || `Terjadi kesalahan dengan kode status HTTP ${status}.`;
+            serverDetail || `Permintaan gagal diproses (kode status ${status}). Silakan coba lagi.`;
       }
     }
 

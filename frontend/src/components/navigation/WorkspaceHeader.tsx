@@ -70,44 +70,48 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   return (
     <header className="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex-shrink-0">
       {/* Baris Atas: Breadcrumb & Kontrol Sistem */}
-      <div className="h-16 px-6 flex items-center justify-between border-b border-border-light dark:border-border-dark">
-        <div className="flex items-center gap-2 text-sm text-text-secondary-light dark:text-text-secondary-dark min-w-0">
+      <div className="min-h-16 px-4 xl:px-6 py-2 flex flex-wrap items-center justify-between gap-3 border-b border-border-light dark:border-border-dark">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-1.5 xl:gap-2 text-sm text-text-secondary-light dark:text-text-secondary-dark min-w-0 flex-1"
+        >
           <NavLink
             to="/beranda"
-            className="font-semibold text-text-primary-light dark:text-text-primary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark transition-colors flex-shrink-0"
+            className="font-semibold text-text-primary-light dark:text-text-primary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark transition-colors flex-shrink-0 hidden xl:inline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-sm"
           >
             Platform Data & Forecasting
           </NavLink>
-          <ChevronRight className="w-4 h-4 text-text-muted-light dark:text-text-muted-dark flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 text-text-secondary-light dark:text-text-secondary-dark flex-shrink-0 hidden xl:inline" aria-hidden="true" />
           <NavLink
             to="/beranda"
-            className="hover:text-text-primary-light dark:hover:text-text-primary-dark flex-shrink-0"
+            className="hover:text-text-primary-light dark:hover:text-text-primary-dark flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-sm"
           >
             Beranda
           </NavLink>
-          <ChevronRight className="w-4 h-4 text-text-muted-light dark:text-text-muted-dark flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 text-text-secondary-light dark:text-text-secondary-dark flex-shrink-0" aria-hidden="true" />
           <NavLink
             to="/katalog"
-            className="hover:text-text-primary-light dark:hover:text-text-primary-dark flex-shrink-0"
+            className="hover:text-text-primary-light dark:hover:text-text-primary-dark flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-sm"
           >
             Katalog Dataset
           </NavLink>
-          <ChevronRight className="w-4 h-4 text-text-muted-light dark:text-text-muted-dark flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 text-text-secondary-light dark:text-text-secondary-dark flex-shrink-0" aria-hidden="true" />
           <span className="font-semibold text-text-primary-light dark:text-text-primary-dark font-mono truncate">
             {isLoading ? 'Memuat...' : dataset?.nama || `Dataset #${datasetId}`}
           </span>
-        </div>
+        </nav>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2 xl:gap-3 flex-shrink-0">
           <BackendStatusBadge />
           <ThemeToggle />
-          <span className="px-2.5 py-1 rounded-button text-xs font-semibold bg-header-light dark:bg-header-dark text-text-secondary-light dark:text-text-secondary-dark border border-border-light dark:border-border-dark">
+          <span className="px-2.5 py-1 rounded-button text-xs font-semibold bg-header-light dark:bg-header-dark text-text-secondary-light dark:text-text-secondary-dark border border-border-light dark:border-border-dark whitespace-nowrap">
             Admin
           </span>
           <Button
             variant="primary"
             icon={<Plus className="w-4 h-4" />}
             onClick={() => navigate('/unggah')}
+            className="whitespace-nowrap"
           >
             Unggah Dataset Baru
           </Button>
@@ -159,7 +163,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
             </div>
 
             {dataset && (
-              <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-text-muted-light dark:text-text-muted-dark">
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-text-muted-light dark:text-text-secondary-dark">
                 <span>
                   Kategori:{' '}
                   <strong className="text-text-secondary-light dark:text-text-secondary-dark">
@@ -190,14 +194,14 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
             onClick={onRefresh}
             disabled={isFetching}
           >
-            Segarkan Data
+            Segarkan
           </Button>
         </div>
       </div>
 
       {/* Baris Bawah: 4 Tab Modular Workspace */}
       <nav
-        className="px-6 flex gap-2 overflow-x-auto border-t border-border-light dark:border-border-dark"
+        className="px-4 xl:px-6 flex gap-2 overflow-x-auto border-t border-border-light dark:border-border-dark"
         aria-label="Tab Workspace Dataset"
       >
         {tabs.map((tab) => (
@@ -205,7 +209,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap min-h-control ${
+              `flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
                 isActive
                   ? 'border-brand-primary-light dark:border-brand-primary-dark text-brand-primary-light dark:text-brand-primary-dark bg-surface-light dark:bg-surface-dark'
                   : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark hover:border-border-light dark:hover:border-border-dark'

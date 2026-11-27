@@ -21,18 +21,6 @@ const MAX_CANVAS_WIDTH = 2400;
 const MAX_CANVAS_HEIGHT = 1800;
 
 /**
- * Escape karakter khusus XML pada string teks
- */
-export function escapeXml(unsafe: string): string {
-  return String(unsafe)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/**
  * Membersihkan dan membatasi panjang nama berkas unduhan grafik maksimal 80 karakter.
  * Format: {nama_dataset}_{jenis_grafik}.{ext}
  */
@@ -225,7 +213,7 @@ function buildStandaloneSvgElement(options: ExportChartOptions): {
     'font-family',
     "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
   );
-  titleEl.textContent = escapeXml(title).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+  titleEl.textContent = String(title);
   wrapperSvg.appendChild(titleEl);
 
   // Subjudul sumber kolom + nama dataset
@@ -244,7 +232,7 @@ function buildStandaloneSvgElement(options: ExportChartOptions): {
       'font-family',
       "'JetBrains Mono', ui-monospace, Consolas, monospace"
     );
-    subEl.textContent = escapeXml(subtitleText).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+    subEl.textContent = String(subtitleText);
     wrapperSvg.appendChild(subEl);
   }
 

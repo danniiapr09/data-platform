@@ -491,22 +491,3 @@ export async function postApplyReview(
   );
   return response.data;
 }
-
-export async function getApplyReviewDiff(
-  datasetId: number | string
-): Promise<ApplyReviewResponse> {
-  return postApplyReview(datasetId, true);
-}
-
-// B-07: Agregasi hierarki dan matriks 2D untuk galeri diagram (Fase 5)
-// TODO(B-07): Panggil endpoint khusus GET /datasets/{id}/analysis/hierarchy & matrix jika telah diimplementasikan backend.
-export async function getHierarchyData(datasetId: string) {
-  const response = await apiClient.get(`/datasets/${datasetId}/eda`);
-  return response.data;
-}
-
-// B-11: Autentikasi mandiri kredensial pegawai instansi (Fase 8)
-// TODO(B-11): Hubungkan ke endpoint POST /auth/login dan GET /auth/me saat fase autentikasi dimulai.
-export async function loginOfficer() {
-  return Promise.resolve({ user: 'pegawai_instansi', role: 'admin' });
-}

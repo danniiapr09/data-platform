@@ -111,7 +111,7 @@ export const CleanReportPanel: React.FC<CleanReportPanelProps> = ({
       {isExpanded && (
         <div className="p-5 space-y-5">
           {/* Baris 1: 4 Kartu Status Anomali & Rincian Pembersihan (F-12) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
             {/* 1. Pending */}
             <div className="p-3.5 rounded-card bg-anomaly-warning-bg-light/50 dark:bg-anomaly-warning-bg-dark/40 border border-border-light dark:border-border-dark flex items-center justify-between">
               <div>
@@ -198,7 +198,7 @@ export const CleanReportPanel: React.FC<CleanReportPanelProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
                 <BarChart3 className="w-4 h-4 text-brand-primary-light dark:text-brand-primary-dark" />
-                <span>Ringkasan & Narasi Anomali (F-13)</span>
+                <span>Ringkasan & Narasi Anomali</span>
               </div>
 
               {/* Pemilih Group By (jenis | kolom | status | data) */}

@@ -141,6 +141,11 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
         onCancel();
       }
     } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Hanya simpan saat fokus berada di input/textarea; jika fokus pada tombol (mis. Batal/Tutup), biarkan aksi tombol berjalan
+      const targetTag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (targetTag === 'button') {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       if (!isSaving) {
@@ -153,16 +158,16 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
     <div
       onKeyDown={handleKeyDown}
       role="dialog"
-      aria-label={`Edit sel kolom ${anomaly.kolom} pada baris file ${anomaly.baris_di_file_asli}`}
+      aria-label={`Edit sel kolom ${anomaly.kolom} pada baris ${anomaly.baris_di_file_asli}`}
       className="w-80 p-4 rounded-popover bg-surface-light dark:bg-surface-dark border-2 border-brand-primary-light dark:border-brand-primary-dark shadow-xl space-y-3 text-left font-sans z-40"
     >
       {/* Header Metadata Sel Target */}
       <div className="flex items-start justify-between gap-2 border-b border-border-light dark:border-border-dark pb-2.5">
         <div className="space-y-0.5 min-w-0">
           <div className="flex items-center gap-1.5 text-xs font-bold text-brand-primary-light dark:text-brand-primary-dark">
-            <Edit3 className="w-3.5 h-3.5 flex-shrink-0" />
+            <Edit3 className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
             <span>
-              Baris File #{anomaly.baris_di_file_asli} • Kolom{' '}
+              No. Baris #{anomaly.baris_di_file_asli} • Kolom{' '}
               <span className="font-mono">{anomaly.kolom}</span>
             </span>
           </div>
@@ -175,9 +180,9 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
           onClick={onCancel}
           disabled={isSaving}
           aria-label="Tutup editor sel"
-          className="p-1 rounded-button text-text-muted-light dark:text-text-muted-dark hover:text-text-primary-light dark:hover:text-text-primary-dark"
+          className="inline-flex items-center justify-center min-h-control min-w-[38px] rounded-button text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark flex-shrink-0"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -208,6 +213,8 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
           inputMode={isNumericColumn ? 'decimal' : 'text'}
           value={inputValue}
           disabled={isSaving}
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={validationError ? `cell-edit-error-${anomaly.id}` : undefined}
           onChange={(e) => {
             setInputValue(e.target.value);
             if (validationError) setValidationError(null);
@@ -231,6 +238,7 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
             Alasan Perubahan (Wajib min. 5 karakter):
           </label>
           <span
+            id={`cell-edit-counter-${anomaly.id}`}
             className={`px-2 py-0.5 rounded-full text-xs font-mono font-semibold tabular-numbers ${
               isAlasanValid
                 ? 'bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark'
@@ -246,6 +254,12 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
           maxLength={MAX_ALASAN_LENGTH}
           value={alasan}
           disabled={isSaving}
+          aria-invalid={Boolean(validationError && !isAlasanValid)}
+          aria-describedby={
+            validationError
+              ? `cell-edit-counter-${anomaly.id} cell-edit-error-${anomaly.id}`
+              : `cell-edit-counter-${anomaly.id}`
+          }
           onChange={(e) => {
             setAlasan(e.target.value);
             if (validationError) setValidationError(null);
@@ -258,10 +272,11 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
       {/* Kotak Validasi Inline (Hanya untuk validasi form, tidak memicu toast) */}
       {validationError && (
         <div
+          id={`cell-edit-error-${anomaly.id}`}
           role="alert"
-          className="p-2.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark text-xs font-medium flex items-start gap-2"
+          className="p-2.5 rounded-button bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark text-sm font-medium flex items-start gap-2"
         >
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>{validationError}</span>
         </div>
       )}
@@ -272,7 +287,7 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
           type="button"
           onClick={onCancel}
           disabled={isSaving}
-          className="px-3 py-2 text-xs font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light dark:hover:bg-header-dark transition-colors min-h-control"
+          className="px-3 py-2 text-sm font-semibold rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light dark:hover:bg-header-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control"
         >
           Batal (Esc)
         </button>
@@ -280,9 +295,9 @@ export const InlineCellEditorPopover: React.FC<InlineCellEditorPopoverProps> = (
           type="button"
           onClick={validateAndSubmit}
           disabled={isSaving}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-button bg-brand-primary-light text-white dark:bg-brand-cyan dark:text-canvas-dark hover:opacity-95 transition-opacity disabled:opacity-50 min-h-control"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-button bg-brand-primary-light text-white dark:bg-brand-cyan dark:text-canvas-dark hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-opacity disabled:opacity-50 min-h-control"
         >
-          <Check className="w-3.5 h-3.5" />
+          <Check className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{isSaving ? 'Menyimpan...' : 'Simpan (Enter)'}</span>
         </button>
       </div>

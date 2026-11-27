@@ -143,9 +143,6 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               >
                 Indikator Target
               </label>
-              <span className="text-xs font-mono text-text-muted-light dark:text-text-muted-dark">
-                nilai
-              </span>
             </div>
             <select
               id="forecast-indicator-select"
@@ -179,15 +176,13 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               >
                 Sumbu Waktu
               </label>
-              <span className="text-xs font-mono text-text-muted-light dark:text-text-muted-dark">
-                waktu
-              </span>
             </div>
             <select
               id="forecast-time-select"
               value={selectedTimeColumn}
               disabled={isSubmitting || timeColumnChoices.length === 0}
               onChange={(e) => onTimeColumnChange(e.target.value)}
+              aria-describedby={!detectedTimeColumn ? 'forecast-time-help' : undefined}
               className="w-full px-3 py-2 text-sm font-mono rounded-input bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark disabled:opacity-50 min-h-control"
             >
               <option value="">-- Pilih Kolom Waktu --</option>
@@ -199,7 +194,7 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               ))}
             </select>
             {!detectedTimeColumn && (
-              <p className="text-xs text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
+              <p id="forecast-time-help" className="text-xs text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
                 Kolom waktu tidak terdeteksi otomatis. Pilih manual kolom waktu.
               </p>
             )}
@@ -214,9 +209,6 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               >
                 Metode Agregasi
               </label>
-              <span className="text-xs font-mono text-text-muted-light dark:text-text-muted-dark">
-                agg
-              </span>
             </div>
             <select
               id="forecast-agg-select"
@@ -275,14 +267,15 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
                   disabled={isSubmitting}
                   onChange={(e) => handleHorizonNumberInput(e.target.value)}
                   aria-label="Input angka horizon prediksi (1 sampai 24 periode)"
-                  className="w-16 px-2 py-1 text-sm font-mono text-center rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark tabular-numbers"
+                  aria-describedby="forecast-horizon-help"
+                  className="w-16 px-2 py-1.5 text-sm font-mono text-center rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark tabular-numbers min-h-control"
                 />
                 <span className="text-xs font-mono text-text-secondary-light dark:text-text-secondary-dark pr-1">
                   periode
                 </span>
               </div>
             </div>
-            <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+            <p id="forecast-horizon-help" className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
               Rentang: 1–24 periode ke depan (default: 3 periode).
             </p>
           </div>
@@ -296,9 +289,6 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               >
                 Data Uji (Opsional)
               </label>
-              <span className="text-xs font-mono text-text-muted-light dark:text-text-muted-dark">
-                test_size
-              </span>
             </div>
             <input
               id="forecast-test-size-input"
@@ -309,14 +299,16 @@ export const ForecastConfigForm: React.FC<ForecastConfigFormProps> = ({
               value={testSizeInput}
               disabled={isSubmitting}
               onChange={(e) => onTestSizeInputChange(e.target.value)}
+              aria-invalid={isTestSizeInvalid}
+              aria-describedby="forecast-test-size-help"
               className="w-full px-3 py-2 text-sm font-mono rounded-input bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark disabled:opacity-50 min-h-control tabular-numbers"
             />
             {isTestSizeInvalid ? (
-              <p className="text-xs text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark">
+              <p id="forecast-test-size-help" role="alert" className="text-xs text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark">
                 Data uji harus bilangan bulat minimal 1 periode.
               </p>
             ) : (
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+              <p id="forecast-test-size-help" className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
                 Kosongkan untuk otomatis (20% periode, maks. 3; sisa data latih
                 min. 3 periode).
               </p>

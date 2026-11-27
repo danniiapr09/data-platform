@@ -6,18 +6,18 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     {
       to: '/beranda',
-      label: 'Ringkasan Data',
-      icon: <BarChart3 className="w-5 h-5" />,
+      label: 'Beranda',
+      icon: <BarChart3 className="w-5 h-5" aria-hidden="true" />,
     },
     {
       to: '/katalog',
-      label: 'Katalog Registri',
-      icon: <Database className="w-5 h-5" />,
+      label: 'Katalog Dataset',
+      icon: <Database className="w-5 h-5" aria-hidden="true" />,
     },
     {
       to: '/unggah',
       label: 'Unggah Dataset Baru',
-      icon: <UploadCloud className="w-5 h-5" />,
+      icon: <UploadCloud className="w-5 h-5" aria-hidden="true" />,
     },
   ];
 
@@ -25,14 +25,14 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 flex-shrink-0 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex flex-col min-h-screen">
       <div className="h-16 px-4 border-b border-border-light dark:border-border-dark flex items-center">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-button bg-brand-primary-light dark:bg-brand-cyan flex items-center justify-center text-white dark:text-canvas-dark font-bold text-sm">
+          <div className="w-8 h-8 rounded-button bg-brand-primary-light dark:bg-brand-cyan flex items-center justify-center text-white dark:text-canvas-dark font-bold text-sm" aria-hidden="true">
             PD
           </div>
           <div>
-            <h1 className="text-sm font-bold leading-tight text-text-primary-light dark:text-text-primary-dark">
+            <p className="text-sm font-bold leading-tight text-text-primary-light dark:text-text-primary-dark">
               Platform Data & Forecasting
-            </h1>
-            <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+            </p>
+            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
               Sistem Registri & Analisis
             </p>
           </div>
@@ -40,7 +40,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <nav className="p-3 space-y-1 flex-1" aria-label="Navigasi Global">
-        <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-text-muted-light dark:text-text-muted-dark">
+        <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
           Navigasi Workspace
         </div>
         {navItems.map((item) => (
@@ -48,7 +48,7 @@ export const Sidebar: React.FC = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium transition-colors min-h-control ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
                 isActive
                   ? 'bg-header-light dark:bg-header-dark text-brand-primary-light dark:text-brand-primary-dark font-semibold border-l-4 border-brand-primary-light dark:border-brand-primary-dark'
                   : 'text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light dark:hover:bg-header-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'

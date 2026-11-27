@@ -65,9 +65,11 @@ export const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
     const n = displayedCols.length;
     if (n < 2) return null;
 
-    const topHeaderHeight = 86;
-    const legendHeight = 44;
-    const svgWidth = labelWidth + n * cellSize + 24;
+    const topHeaderHeight = 104;
+    const legendHeight = 48;
+    const matrixWidth = labelWidth + n * cellSize + 84;
+    const minLegendWidth = labelWidth + 520;
+    const svgWidth = Math.max(matrixWidth, minLegendWidth);
     const svgHeight = topHeaderHeight + n * cellSize + legendHeight;
 
     return (
@@ -131,22 +133,35 @@ export const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
                   const isNull = val === null || Number.isNaN(val);
                   const absVal = isNull ? 0 : Math.min(1, Math.abs(val));
 
-                  // Skala satu rona dari token utama (Royal Blue untuk >= 0, Violet untuk < 0)
+                  // Skala satu rona dari token utama (Royal Blue/Sky untuk >= 0, Violet untuk < 0)
+                  const isPositive = !isNull && val >= 0;
                   const fillToken = isNull
                     ? 'var(--color-header)'
-                    : val >= 0
+                    : isPositive
                     ? 'var(--color-brand-primary)'
                     : 'var(--color-brand-violet)';
 
-                  const fillOpacity = isNull
-                    ? 1
-                    : Number((0.12 + absVal * 0.78).toFixed(2));
-
-                  // Kontras teks: putih pada opasitas tinggi (>= 0.58)
-                  const textFill =
-                    !isNull && fillOpacity >= 0.58
-                      ? 'var(--color-surface)'
-                      : 'var(--color-text-primary)';
+                  // Pemetaan opasitas yang melompati zona mati kontras (0,60-0,81) untuk sel primary
+                  // sehingga rasio kontras teks selalu >= 4,5:1 di Light & Dark Mode:
+                  // - Violet (negatif): selalu memakai var(--color-text-primary) (>= 4,69:1 s/d opasitas 0,90)
+                  // - Primary (positif): absVal < 0,65 -> opasitas 0,14..0,58 + text-primary (>= 4,90:1);
+                  //                      absVal >= 0,65 -> opasitas 0,82..0,96 + surface (>= 4,63:1)
+                  let fillOpacity = 1;
+                  let textFill = 'var(--color-text-primary)';
+                  if (!isNull) {
+                    if (isPositive) {
+                      if (absVal < 0.65) {
+                        fillOpacity = Number((0.14 + (absVal / 0.65) * 0.44).toFixed(2));
+                        textFill = 'var(--color-text-primary)';
+                      } else {
+                        fillOpacity = Number((0.82 + ((absVal - 0.65) / 0.35) * 0.14).toFixed(2));
+                        textFill = 'var(--color-surface)';
+                      }
+                    } else {
+                      fillOpacity = Number((0.12 + absVal * 0.78).toFixed(2));
+                      textFill = 'var(--color-text-primary)';
+                    }
+                  }
 
                   const formattedVal = isNull
                     ? 'null'
@@ -283,7 +298,7 @@ export const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
   return (
     <>
       <ChartCardShell
-        title="Matriks Korelasi Numerik Interaktif (F-21)"
+        title="Matriks Korelasi Numerik Interaktif"
         subtitle={`Korelasi Pearson antar ${formatNumberId(
           displayedCols.length,
           0
@@ -310,7 +325,7 @@ export const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
           {relevantPairs.length > 0 && (
             <div className="pt-3 border-t border-border-light dark:border-border-dark">
               <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark mb-2">
-                Pasangan Korelasi Terkuat (Dari Backend)
+                Pasangan Korelasi Terkuat
               </h4>
               <div className="flex flex-wrap gap-2">
                 {relevantPairs.map((pair) => (
@@ -335,7 +350,7 @@ export const CorrelationMatrixCard: React.FC<CorrelationMatrixCardProps> = ({
       <FullscreenChartModal
         isOpen={isFullscreenOpen}
         onClose={() => setIsFullscreenOpen(false)}
-        title="Matriks Korelasi Numerik Interaktif (F-21)"
+        title="Matriks Korelasi Numerik Interaktif"
         subtitle={`Korelasi Pearson antar ${formatNumberId(
           displayedCols.length,
           0

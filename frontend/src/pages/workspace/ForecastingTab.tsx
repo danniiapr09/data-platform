@@ -18,6 +18,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
+import { useWorkspaceTabState } from '@/context/WorkspaceTabStateContext';
 import { Button } from '@/components/common/Button';
 import { showToast } from '@/components/common/Toast';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
@@ -225,13 +226,46 @@ export const ForecastingTab: React.FC = () => {
     enabled: Boolean(datasetId) && hasCleanVersion,
   });
 
-  // State Form Konfigurasi F-26
-  const [selectedIndicator, setSelectedIndicator] = useState<string>('');
-  const [selectedTimeColumn, setSelectedTimeColumn] = useState<string>('');
+  const { state: tabMemory, updateTab4 } = useWorkspaceTabState();
+
+  // State Form Konfigurasi (dipertahankan di memori React saat berpindah antar-tab)
+  const [selectedIndicator, setSelectedIndicator] = useState<string>(
+    () => tabMemory.tab4.selectedIndicator ?? ''
+  );
+  const [selectedTimeColumn, setSelectedTimeColumn] = useState<string>(
+    () => tabMemory.tab4.selectedTimeColumn ?? ''
+  );
   const [selectedAggregation, setSelectedAggregation] =
-    useState<AggregationFunction>('sum');
-  const [horizon, setHorizon] = useState<number>(3);
-  const [testSizeInput, setTestSizeInput] = useState<string>('');
+    useState<AggregationFunction>(
+      () => tabMemory.tab4.selectedAggregation ?? 'sum'
+    );
+  const [horizon, setHorizon] = useState<number>(
+    () => tabMemory.tab4.horizon ?? 3
+  );
+  const [testSizeInput, setTestSizeInput] = useState<string>(
+    () => tabMemory.tab4.testSizeInput ?? ''
+  );
+
+  useEffect(() => {
+    if (!selectedIndicator && !selectedTimeColumn && !testSizeInput && horizon === 3) {
+      return;
+    }
+    updateTab4({
+      selectedIndicator,
+      selectedTimeColumn,
+      selectedAggregation,
+      horizon,
+      testSizeInput,
+      hasCustomEdits: true,
+    });
+  }, [
+    selectedIndicator,
+    selectedTimeColumn,
+    selectedAggregation,
+    horizon,
+    testSizeInput,
+    updateTab4,
+  ]);
 
   // State Error 400 / Jaringan di Dalam Kartu Form & Penyesuaian Periode Uji Efektif
   const [formSubmitError, setFormSubmitError] = useState<string | null>(null);
@@ -286,6 +320,11 @@ export const ForecastingTab: React.FC = () => {
       !edaOverview ||
       initializedDatasetIdRef.current === datasetId
     ) {
+      return;
+    }
+
+    if (tabMemory.tab4.hasCustomEdits) {
+      initializedDatasetIdRef.current = datasetId;
       return;
     }
 
@@ -437,7 +476,7 @@ export const ForecastingTab: React.FC = () => {
   const historicalErrorMessage = historicalError
     ? (historicalError as Error & { localizedMessage?: string })
         ?.localizedMessage ||
-      'Gagal memuat titik historis dari endpoint /eda/trend.'
+      'Gagal memuat data historis untuk grafik peramalan.'
     : !savedReportParams?.timeCol && hasSavedForecast
     ? 'Kolom sumbu waktu tidak tercatat pada laporan lama dan tidak terdeteksi otomatis.'
     : null;
@@ -603,7 +642,7 @@ export const ForecastingTab: React.FC = () => {
   // 1. Kondisi Loading Metadata Dataset
   if (isDatasetLoading) {
     return (
-      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         Memuat status dataset untuk Tab Peramalan & Ekspor...
       </div>
     );
@@ -622,8 +661,8 @@ export const ForecastingTab: React.FC = () => {
           </h2>
           <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-lg mx-auto">
             Pemodelan peramalan deret waktu dan ekspor laporan buku kerja Excel
-            hanya bekerja pada versi data bersih (`CleanData`). Silakan jalankan
-            pembersihan otomatis terlebih dahulu pada Tab 2.
+            hanya bekerja pada versi data bersih. Silakan jalankan pembersihan
+            otomatis terlebih dahulu pada Tab 2.
           </p>
         </div>
         <div className="pt-2">

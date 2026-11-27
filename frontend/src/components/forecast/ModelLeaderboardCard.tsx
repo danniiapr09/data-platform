@@ -101,60 +101,81 @@ export const ModelLeaderboardCard: React.FC<ModelLeaderboardCardProps> = ({
 
         {/* Peringatan jika laporan berasal dari data lama (lengkap === false) */}
         {isLegacyIncompleteReport && (
-          <div className="p-3 rounded-button bg-anomaly-warning-bg-light/70 dark:bg-anomaly-warning-bg-dark/60 border border-anomaly-warning-text-light/30 dark:border-anomaly-warning-text-dark/40 text-xs text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
+          <div className="p-3 rounded-button bg-anomaly-warning-bg-light/70 dark:bg-anomaly-warning-bg-dark/60 border border-anomaly-warning-text-light/30 dark:border-anomaly-warning-text-dark/40 text-sm text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
             Hasil peramalan ini disimpan sebelum rincian perbandingan 4 model
-            dicatat penuh (`lengkap: false`). Menampilkan metrik model terbaik
-            yang tersimpan; klik <strong>Hitung Ulang Peramalan</strong> untuk
-            memuat evaluasi 4 model baseline secara lengkap.
+            dicatat penuh. Menampilkan metrik model terbaik yang tersimpan; klik{' '}
+            <strong>Hitung Ulang Peramalan</strong> untuk memuat evaluasi 4
+            model baseline secara lengkap.
           </div>
         )}
 
         {/* Tabel Peringkat 4 Model Baseline */}
         <div className="overflow-x-auto border border-border-light dark:border-border-dark rounded-button">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse" aria-label="Papan Peringkat Evaluasi Model Peramalan">
             <thead>
               <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-                <th className="py-3 px-3.5">Peringkat & Model</th>
-                <th className="py-3 px-3.5 text-right">
-                  <div className="inline-flex items-center justify-end gap-1">
+                <th scope="col" className="py-3 px-3.5">Peringkat & Model</th>
+                <th scope="col" className="py-3 px-3.5 text-right">
+                  <div className="inline-flex items-center justify-end gap-1 relative group">
                     <span>MAE</span>
-                    <span
-                      tabIndex={0}
-                      title={METRIC_TOOLTIPS.mae}
+                    <button
+                      type="button"
                       aria-label={METRIC_TOOLTIPS.mae}
-                      className="text-text-muted-light dark:text-text-muted-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
+                      aria-describedby="tooltip-mae"
+                      className="text-text-secondary-light dark:text-text-secondary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-full"
                     >
-                      <HelpCircle className="w-3.5 h-3.5" />
+                      <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                    <span
+                      id="tooltip-mae"
+                      role="tooltip"
+                      className="pointer-events-none absolute right-0 top-full mt-1.5 z-30 w-60 p-2 rounded-popover text-left text-xs font-normal normal-case tracking-normal shadow-lg bg-text-primary-light text-surface-light dark:bg-surface-dark dark:text-text-primary-dark dark:border dark:border-brand-primary-dark opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity"
+                    >
+                      {METRIC_TOOLTIPS.mae}
                     </span>
                   </div>
                 </th>
-                <th className="py-3 px-3.5 text-right">
-                  <div className="inline-flex items-center justify-end gap-1">
+                <th scope="col" className="py-3 px-3.5 text-right">
+                  <div className="inline-flex items-center justify-end gap-1 relative group">
                     <span>MAPE (%)</span>
-                    <span
-                      tabIndex={0}
-                      title={METRIC_TOOLTIPS.mape}
+                    <button
+                      type="button"
                       aria-label={METRIC_TOOLTIPS.mape}
-                      className="text-text-muted-light dark:text-text-muted-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
+                      aria-describedby="tooltip-mape"
+                      className="text-text-secondary-light dark:text-text-secondary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-full"
                     >
-                      <HelpCircle className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
-                </th>
-                <th className="py-3 px-3.5 text-right">
-                  <div className="inline-flex items-center justify-end gap-1">
-                    <span>RMSE</span>
+                      <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
                     <span
-                      tabIndex={0}
-                      title={METRIC_TOOLTIPS.rmse}
-                      aria-label={METRIC_TOOLTIPS.rmse}
-                      className="text-text-muted-light dark:text-text-muted-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
+                      id="tooltip-mape"
+                      role="tooltip"
+                      className="pointer-events-none absolute right-0 top-full mt-1.5 z-30 w-60 p-2 rounded-popover text-left text-xs font-normal normal-case tracking-normal shadow-lg bg-text-primary-light text-surface-light dark:bg-surface-dark dark:text-text-primary-dark dark:border dark:border-brand-primary-dark opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity"
                     >
-                      <HelpCircle className="w-3.5 h-3.5" />
+                      {METRIC_TOOLTIPS.mape}
                     </span>
                   </div>
                 </th>
-                <th className="py-3 px-3.5 text-center">Status Evaluasi</th>
+                <th scope="col" className="py-3 px-3.5 text-right">
+                  <div className="inline-flex items-center justify-end gap-1 relative group">
+                    <span>RMSE</span>
+                    <button
+                      type="button"
+                      aria-label={METRIC_TOOLTIPS.rmse}
+                      aria-describedby="tooltip-rmse"
+                      className="text-text-secondary-light dark:text-text-secondary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark rounded-full"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                    <span
+                      id="tooltip-rmse"
+                      role="tooltip"
+                      className="pointer-events-none absolute right-0 top-full mt-1.5 z-30 w-60 p-2 rounded-popover text-left text-xs font-normal normal-case tracking-normal shadow-lg bg-text-primary-light text-surface-light dark:bg-surface-dark dark:text-text-primary-dark dark:border dark:border-brand-primary-dark opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity"
+                    >
+                      {METRIC_TOOLTIPS.rmse}
+                    </span>
+                  </div>
+                </th>
+                <th scope="col" className="py-3 px-3.5 text-center">Status Evaluasi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
@@ -227,7 +248,7 @@ export const ModelLeaderboardCard: React.FC<ModelLeaderboardCardProps> = ({
                           <span>Model Terbaik</span>
                         </span>
                       ) : (
-                        <span className="text-xs text-text-muted-light dark:text-text-muted-dark">
+                        <span className="text-xs text-text-muted-light dark:text-text-secondary-dark">
                           Kandidat Baseline
                         </span>
                       )}

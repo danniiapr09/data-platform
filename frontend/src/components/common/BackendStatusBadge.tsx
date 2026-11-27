@@ -14,28 +14,28 @@ export const BackendStatusBadge: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-header-light dark:bg-header-dark text-text-muted-light dark:text-text-muted-dark border border-border-light dark:border-border-dark">
-        <span className="w-2 h-2 rounded-full bg-text-muted-light animate-pulse" />
-        <span>Memeriksa Backend...</span>
+      <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-header-light dark:bg-header-dark text-text-secondary-light dark:text-text-secondary-dark border border-border-light dark:border-border-dark whitespace-nowrap">
+        <span className="w-2 h-2 rounded-full bg-text-secondary-light dark:bg-text-secondary-dark animate-pulse flex-shrink-0" />
+        <span>Memeriksa Server...</span>
       </div>
     );
   }
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
+      className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full border transition-colors whitespace-nowrap ${
         isConnected
           ? 'bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark border-border-light dark:border-border-dark'
           : 'bg-anomaly-danger-bg-light dark:bg-anomaly-danger-bg-dark text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark border-border-light dark:border-border-dark'
       }`}
-      title={isConnected ? 'Backend FastAPI aktif dan terhubung' : 'Gagal menghubungi backend di port 8000'}
+      title={isConnected ? 'Server layanan data aktif dan terhubung' : 'Gagal menghubungi server layanan data'}
     >
       <span
-        className={`w-2 h-2 rounded-full ${
+        className={`w-2 h-2 rounded-full flex-shrink-0 ${
           isConnected ? 'bg-anomaly-success-text-light dark:bg-anomaly-success-text-dark' : 'bg-anomaly-danger-text-light dark:bg-anomaly-danger-text-dark'
         }`}
       />
-      <span>{isConnected ? 'Terhubung (200 OK)' : 'Backend Terputus'}</span>
+      <span>{isConnected ? 'Server Terhubung' : 'Server Terputus'}</span>
     </div>
   );
 };

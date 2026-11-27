@@ -59,7 +59,7 @@ export const FormatFileBadge: React.FC<FormatFileBadgeProps> = ({
   if (!ext) return null;
 
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs font-semibold bg-brand-cyan/15 text-brand-cyan flex-shrink-0">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs font-semibold bg-brand-cyan/15 text-brand-primary-light dark:text-brand-primary-dark border border-brand-cyan/30 flex-shrink-0">
       {ext}
     </span>
   );
@@ -83,7 +83,7 @@ export const DataTypeBadge: React.FC<DataTypeBadgeProps> = ({ rawType }) => {
       'bg-brand-primary-light/10 dark:bg-brand-primary-dark/15 text-brand-primary-light dark:text-brand-primary-dark border-brand-primary-light/20 dark:border-brand-primary-dark/30';
   } else if (typeLabel === 'decimal') {
     colorClass =
-      'bg-brand-violet/10 text-brand-violet border-brand-violet/25';
+      'bg-brand-violet/15 dark:bg-brand-violet/25 text-text-primary-light dark:text-text-primary-dark border-brand-violet/40';
   } else if (typeLabel === 'date') {
     colorClass =
       'bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark border-anomaly-warning-text-light/20';

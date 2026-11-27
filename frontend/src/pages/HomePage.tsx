@@ -20,6 +20,7 @@ import {
   ProcessingStatusBadge,
 } from '@/components/common/StatusBadge';
 import { BACKEND_CAPABILITIES } from '@/config/backendCapabilities';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getDashboardSummary } from '@/services/datasetService';
 import {
   formatDateTimeId,
@@ -29,6 +30,7 @@ import {
 } from '@/utils/formatters';
 
 export const HomePage: React.FC = () => {
+  useDocumentTitle('Beranda');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -66,9 +68,9 @@ export const HomePage: React.FC = () => {
       {/* Header Halaman */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
             Beranda Eksekutif & Kurasi Data
-          </h2>
+          </h1>
           <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
             Pantau kesehatan dataset, kelengkapan data institusi, dan prioritas verifikasi anomali.
           </p>
@@ -134,7 +136,7 @@ export const HomePage: React.FC = () => {
             <div className="text-3xl font-bold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
               {isLoading ? '-' : formatNumberId(totalDataset, 0)}
             </div>
-            <p className="text-xs text-text-muted-light dark:text-text-muted-dark mt-1">
+            <p className="text-xs text-text-muted-light dark:text-text-secondary-dark mt-1">
               Total berkas dataset terdaftar di katalog
             </p>
           </div>
@@ -205,7 +207,7 @@ export const HomePage: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-xs text-text-muted-light dark:text-text-muted-dark mt-1">
+            <p className="text-xs text-text-muted-light dark:text-text-secondary-dark mt-1">
               {pendingAnomalies > 0
                 ? `Tersebar di ${formatNumberId(datasetsWithPending, 0)} dataset`
                 : 'Tidak ada anomali berstatus pending'}
@@ -228,7 +230,7 @@ export const HomePage: React.FC = () => {
               <div className="text-3xl font-bold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
                 {formatPercentId(summary?.rata_rata_kelengkapan_persen)}
               </div>
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark mt-1">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark mt-1">
                 Skor kelengkapan agregat seluruh dataset bersih
               </p>
             </div>
@@ -350,7 +352,7 @@ export const HomePage: React.FC = () => {
           </div>
 
           {isLoading ? (
-            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
               Memuat daftar prioritas anomali...
             </div>
           ) : !summary?.pending_teratas || summary.pending_teratas.length === 0 ? (
@@ -361,7 +363,7 @@ export const HomePage: React.FC = () => {
               <p className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
                 Tidak ada dataset dengan anomali berstatus pending saat ini.
               </p>
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark max-w-md mx-auto">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark max-w-md mx-auto">
                 Dataset yang baru diunggah (berstatus Uploaded) perlu dijalankan pembersihan terlebih dahulu di Workspace agar deteksi anomali diproses.
               </p>
               <div className="pt-1">
@@ -372,15 +374,15 @@ export const HomePage: React.FC = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse" aria-label="Daftar 5 Dataset dengan Anomali Pending Terbanyak">
                 <thead>
                   <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0">
-                    <th className="py-3.5 px-5">Nama Dataset</th>
-                    <th className="py-3.5 px-4">Jenis Data</th>
-                    <th className="py-3.5 px-4">Status Pemrosesan</th>
-                    <th className="py-3.5 px-4">Jumlah Anomali Pending</th>
-                    <th className="py-3.5 px-4">Tanggal Unggah</th>
-                    <th className="py-3.5 px-5 text-right">Aksi</th>
+                    <th scope="col" className="py-3.5 px-5">Nama Dataset</th>
+                    <th scope="col" className="py-3.5 px-4">Jenis Data</th>
+                    <th scope="col" className="py-3.5 px-4">Status Pemrosesan</th>
+                    <th scope="col" className="py-3.5 px-4">Jumlah Anomali Pending</th>
+                    <th scope="col" className="py-3.5 px-4">Tanggal Unggah</th>
+                    <th scope="col" className="py-3.5 px-5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
@@ -407,7 +409,7 @@ export const HomePage: React.FC = () => {
                         {item.status ? (
                           <ProcessingStatusBadge status={item.status} />
                         ) : (
-                          <span className="text-text-muted-light dark:text-text-muted-dark">
+                          <span className="text-text-muted-light dark:text-text-secondary-dark">
                             -
                           </span>
                         )}
@@ -440,7 +442,7 @@ export const HomePage: React.FC = () => {
             </div>
           )}
 
-          <div className="px-5 py-3 bg-header-light/40 dark:bg-header-dark/40 border-t border-border-light dark:border-border-dark flex items-center justify-between text-xs text-text-muted-light dark:text-text-muted-dark">
+          <div className="px-5 py-3 bg-header-light/40 dark:bg-header-dark/40 border-t border-border-light dark:border-border-dark flex items-center justify-between text-xs text-text-muted-light dark:text-text-secondary-dark">
             <span className="tabular-numbers">
               Menampilkan {formatNumberId(summary?.pending_teratas?.length || 0, 0)}{' '}
               dari {formatNumberId(totalDataset, 0)} dataset terdaftar dalam katalog

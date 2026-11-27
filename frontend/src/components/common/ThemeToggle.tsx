@@ -26,9 +26,10 @@ export const ThemeToggle: React.FC = () => {
     <button
       type="button"
       onClick={() => setIsDark((prev) => !prev)}
-      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-button border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light dark:hover:bg-header-dark transition-colors min-h-control"
+      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-button border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-text-secondary-light dark:text-text-secondary-dark hover:bg-header-light dark:hover:bg-header-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark transition-colors min-h-control whitespace-nowrap"
       title={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Obsidian Data Mode'}
-      aria-label="Pengalih Mode Tampilan"
+      aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Obsidian Data Mode'}
+      aria-pressed={isDark}
     >
       {isDark ? (
         <>

@@ -5,18 +5,32 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '@/layouts/MainLayout';
 import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
 import { ToastContainer } from '@/components/common/Toast';
+import { AppErrorBoundary } from '@/components/common/AppErrorBoundary';
 
 import { HomePage } from '@/pages/HomePage';
 import { CatalogPage } from '@/pages/CatalogPage';
 import { UploadPage } from '@/pages/UploadPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 
-import { DataStructureTab } from '@/pages/workspace/DataStructureTab';
-import { AnomalyEditorTab } from '@/pages/workspace/AnomalyEditorTab';
-
-// Code splitting: muat Tab 3 (Dashboard Analitik) dan Tab 4 (Peramalan & Ekspor) secara lazy
-// Kedua tab berbagi chunk Recharts, ChartCardShell, dan FullscreenChartModal tanpa duplikasi
+// Code splitting: seluruh tab Workspace dimuat secara lazy agar bundle awal tetap ringan (< 500 KB)
+const DataStructureTab = lazy(() =>
+  import('@/pages/workspace/DataStructureTab').then((m) => ({
+    default: m.DataStructureTab,
+  }))
+);
+const AnomalyEditorTab = lazy(() =>
+  import('@/pages/workspace/AnomalyEditorTab').then((m) => ({
+    default: m.AnomalyEditorTab,
+  }))
+);
 const AnalyticsTab = lazy(() => import('@/pages/workspace/AnalyticsTab'));
 const ForecastingTab = lazy(() => import('@/pages/workspace/ForecastingTab'));
+
+const TabSuspenseFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="p-12 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
+    Memuat modul {label}...
+  </div>
+);
 
 // Inisialisasi React Query Client terpusat
 const queryClient = new QueryClient({
@@ -31,58 +45,65 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Rute Halaman Global dengan Sidebar Kiri */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Navigate to="/beranda" replace />} />
-            <Route path="/beranda" element={<HomePage />} />
-            <Route path="/katalog" element={<CatalogPage />} />
-            <Route path="/unggah" element={<UploadPage />} />
-          </Route>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            {/* Rute Halaman Global dengan Sidebar Kiri */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Navigate to="/beranda" replace />} />
+              <Route path="/beranda" element={<HomePage />} />
+              <Route path="/katalog" element={<CatalogPage />} />
+              <Route path="/unggah" element={<UploadPage />} />
+            </Route>
 
-          {/* Rute Workspace Dataset Layar Penuh (Full-Width) dengan 4 Tab */}
-          <Route path="/workspace/:datasetId" element={<WorkspaceLayout />}>
-            <Route index element={<Navigate to="data-struktur" replace />} />
-            <Route path="data-struktur" element={<DataStructureTab />} />
-            <Route path="review-anomali" element={<AnomalyEditorTab />} />
-            <Route
-              path="dashboard-analitik"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
-                      Memuat modul Dashboard Analitik...
-                    </div>
-                  }
-                >
-                  <AnalyticsTab />
-                </Suspense>
-              }
-            />
-            <Route
-              path="peramalan-ekspor"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
-                      Memuat modul Peramalan & Ekspor...
-                    </div>
-                  }
-                >
-                  <ForecastingTab />
-                </Suspense>
-              }
-            />
-          </Route>
+            {/* Rute Workspace Dataset Layar Penuh (Full-Width) dengan 4 Tab */}
+            <Route path="/workspace/:datasetId" element={<WorkspaceLayout />}>
+              <Route index element={<Navigate to="data-struktur" replace />} />
+              <Route
+                path="data-struktur"
+                element={
+                  <Suspense fallback={<TabSuspenseFallback label="Data & Struktur" />}>
+                    <DataStructureTab />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="review-anomali"
+                element={
+                  <Suspense fallback={<TabSuspenseFallback label="Review Anomali & Editor" />}>
+                    <AnomalyEditorTab />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="dashboard-analitik"
+                element={
+                  <Suspense fallback={<TabSuspenseFallback label="Dashboard Analitik" />}>
+                    <AnalyticsTab />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="peramalan-ekspor"
+                element={
+                  <Suspense fallback={<TabSuspenseFallback label="Peramalan & Ekspor" />}>
+                    <ForecastingTab />
+                  </Suspense>
+                }
+              />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
 
-          {/* Fallback ke Beranda jika rute tidak ditemukan */}
-          <Route path="*" element={<Navigate to="/beranda" replace />} />
-        </Routes>
-        <ToastContainer />
-      </BrowserRouter>
-    </QueryClientProvider>
+            {/* Halaman 404 untuk rute tidak dikenal */}
+            <Route element={<MainLayout />}>
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+          <ToastContainer />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 };
 

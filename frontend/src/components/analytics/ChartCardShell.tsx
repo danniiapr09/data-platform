@@ -137,8 +137,8 @@ export const ChartCardShell: React.FC<ChartCardShellProps> = ({
               )}
               {isDisabledB07 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark">
-                  <Lock className="w-3 h-3" />
-                  <span>Menunggu dukungan backend (B-07)</span>
+                  <Lock className="w-3 h-3" aria-hidden="true" />
+                  <span>Belum tersedia di server</span>
                 </span>
               )}
             </div>
@@ -208,15 +208,15 @@ export const ChartCardShell: React.FC<ChartCardShellProps> = ({
       <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
         {isDisabledB07 ? (
           <div className="p-6 rounded-button bg-header-light/60 dark:bg-header-dark/60 border border-dashed border-border-light dark:border-border-dark text-center space-y-2 my-auto">
-            <div className="w-10 h-10 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark flex items-center justify-center mx-auto text-text-muted-light dark:text-text-muted-dark">
+            <div className="w-10 h-10 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark flex items-center justify-center mx-auto text-text-muted-light dark:text-text-secondary-dark">
               <Lock className="w-5 h-5" />
             </div>
             <p className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
-              Menunggu dukungan backend (B-07)
+              Diagram Belum Tersedia pada Server
             </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark max-w-md mx-auto">
+            <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-md mx-auto">
               {b07Explanation ||
-                'Diagram ini membutuhkan endpoint agregasi khusus di backend (usulan B-07 pada PRD Bagian 12) dan tidak dipalsukan dari data lain.'}
+                'Diagram ini membutuhkan dukungan agregasi khusus pada server dan belum diaktifkan saat ini.'}
             </p>
           </div>
         ) : isLoading ? (
@@ -237,7 +237,7 @@ export const ChartCardShell: React.FC<ChartCardShellProps> = ({
                 <p className="text-sm font-semibold text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark">
                   Gagal Memuat Grafik Ini
                 </p>
-                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
                   {errorMessage}
                 </p>
               </div>
@@ -260,7 +260,7 @@ export const ChartCardShell: React.FC<ChartCardShellProps> = ({
             <p className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
               Diagram Tidak Aktif untuk Pengaturan Saat Ini
             </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark max-w-md mx-auto">
+            <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-md mx-auto">
               {conditionExplanation}
             </p>
           </div>

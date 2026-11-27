@@ -54,7 +54,6 @@ export const MODEL_SHORT_LABELS: Record<string, string> = {
 export function normalizePeriodKey(raw: string | number | null | undefined): string {
   if (raw === null || raw === undefined) return '';
   if (typeof raw === 'number') {
-    if (Number.isInteger(raw)) return String(raw);
     return String(raw);
   }
   const trimmed = String(raw).trim();
@@ -216,7 +215,7 @@ const ForecastCustomTooltip: React.FC<{
               </span>
             </div>
             {pt.aktual !== null && (
-              <div className="flex items-center justify-between gap-4 text-text-muted-light dark:text-text-muted-dark">
+              <div className="flex items-center justify-between gap-4 text-text-muted-light dark:text-text-secondary-dark">
                 <span>Selisih (Aktual - Uji):</span>
                 <span>{formatNumberId(pt.aktual - pt.prediksiUji, 2)}</span>
               </div>
@@ -661,7 +660,7 @@ export const ForecastTimeSeriesChartCard: React.FC<
         <div className="inline-flex items-center gap-2">
           <span
             aria-hidden="true"
-            className="w-5 h-3 rounded-xs border border-brand-cyan/50 inline-block"
+            className="w-5 h-3 rounded-sm border border-brand-cyan/50 inline-block"
             style={{ backgroundColor: 'var(--color-forecast-ci-band)' }}
           />
           <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
@@ -1001,7 +1000,7 @@ export const ForecastTimeSeriesChartCard: React.FC<
                       tabIndex={0}
                       title={summaryStats.formulaExplanation}
                       aria-label={summaryStats.formulaExplanation}
-                      className="inline-flex items-center text-text-muted-light dark:text-text-muted-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
+                      className="inline-flex items-center text-text-muted-light dark:text-text-secondary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
                     >
                       <HelpCircle className="w-3.5 h-3.5" />
                     </span>
@@ -1071,7 +1070,7 @@ export const ForecastTimeSeriesChartCard: React.FC<
                     tabIndex={0}
                     title="Metrik galat model terbaik yang dihitung pada periode data uji (holdout) yang tidak disertakan saat pelatihan."
                     aria-label="Metrik galat model terbaik pada data uji holdout."
-                    className="inline-flex items-center text-text-muted-light dark:text-text-muted-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
+                    className="inline-flex items-center text-text-muted-light dark:text-text-secondary-dark hover:text-brand-primary-light dark:hover:text-brand-primary-dark cursor-help focus:outline-none focus:ring-2 focus:ring-brand-primary-light rounded-full"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                   </span>

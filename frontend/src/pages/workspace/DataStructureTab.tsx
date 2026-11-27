@@ -17,6 +17,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { WorkspaceOutletContext } from '@/layouts/WorkspaceLayout';
+import { useWorkspaceTabState } from '@/context/WorkspaceTabStateContext';
 import { Button } from '@/components/common/Button';
 import { ProcessingTimelineCard } from '@/components/common/ProcessingTimelineList';
 import { DataTypeBadge, FormatFileBadge } from '@/components/common/StatusBadge';
@@ -78,7 +79,7 @@ const AccessibleCsvExportButton: React.FC<AccessibleCsvExportButtonProps> = ({
         aria-disabled="true"
         aria-describedby={tooltipId}
         onClick={(e) => e.preventDefault()}
-        className="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark opacity-70 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control"
+        className="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-secondary-dark opacity-70 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-primary-light dark:focus:ring-brand-primary-dark min-h-control"
       >
         <Download className="w-4 h-4" />
         <span>{label}</span>
@@ -88,7 +89,7 @@ const AccessibleCsvExportButton: React.FC<AccessibleCsvExportButtonProps> = ({
         role="tooltip"
         className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-popover bg-surface-dark text-text-primary-dark border border-border-dark text-xs font-medium whitespace-nowrap z-30 shadow-lg pointer-events-none"
       >
-        Menunggu dukungan endpoint ekspor CSV penuh (B-10)
+        Fitur ekspor CSV penuh belum tersedia pada server saat ini.
       </div>
     </div>
   );
@@ -117,33 +118,53 @@ export const DataStructureTab: React.FC = () => {
     dataset.versi_bersih !== null &&
     dataset.versi_bersih !== undefined;
 
-  // Toggle versi data yang sedang diinspeksi: 'raw' (v0) atau 'clean' (v{versi})
-  const [selectedVersion, setSelectedVersion] = useState<'raw' | 'clean'>('raw');
-  const [isAccordionOpen, setIsAccordionOpen] = useState<boolean>(true);
-  const [activeSubTab, setActiveSubTab] = useState<
-    'all' | 'schema' | 'preview' | 'history'
-  >('all');
+  const { state: tabMemory, updateTab1 } = useWorkspaceTabState();
 
-  // Set default toggle ke 'clean' jika dataset sudah memiliki versi bersih
+  // Toggle versi data yang sedang diinspeksi: 'raw' (v0) atau 'clean' (v{versi})
+  const [selectedVersion, setSelectedVersion] = useState<'raw' | 'clean'>(
+    () => tabMemory.tab1.selectedVersion ?? 'raw'
+  );
+  const [isAccordionOpen, setIsAccordionOpen] = useState<boolean>(
+    () => tabMemory.tab1.isAccordionOpen ?? true
+  );
+  const [activeSubTab, setActiveSubTab] = useState<'all' | 'preview' | 'history'>(
+    () => tabMemory.tab1.activeSubTab ?? 'all'
+  );
+
+  // Set default toggle ke 'clean' jika belum ada pilihan tersimpan di memori sesi
   useEffect(() => {
-    if (dataset) {
+    if (dataset && !tabMemory.tab1.selectedVersion) {
       if (dataset.versi_bersih !== null) {
         setSelectedVersion('clean');
       } else {
         setSelectedVersion('raw');
       }
     }
-  }, [dataset?.id, dataset?.versi_bersih]);
+  }, [dataset?.id, dataset?.versi_bersih, tabMemory.tab1.selectedVersion]);
+
+  useEffect(() => {
+    updateTab1({ selectedVersion, isAccordionOpen, activeSubTab });
+  }, [selectedVersion, isAccordionOpen, activeSubTab, updateTab1]);
 
   // Query pratinjau data mentah (v0)
-  const { data: rawPreviewData, isLoading: isRawPreviewLoading } = useQuery({
+  const {
+    data: rawPreviewData,
+    isLoading: isRawPreviewLoading,
+    isError: isRawPreviewError,
+    refetch: refetchRawPreview,
+  } = useQuery({
     queryKey: ['dataset-preview', datasetId],
     queryFn: () => getDatasetPreview(datasetId, 10),
     enabled: Boolean(datasetId),
   });
 
   // Query pratinjau data bersih (v{versi}) - hanya dipanggil jika sudah pernah di-cleaning
-  const { data: cleanPreviewData, isLoading: isCleanPreviewLoading } = useQuery({
+  const {
+    data: cleanPreviewData,
+    isLoading: isCleanPreviewLoading,
+    isError: isCleanPreviewError,
+    refetch: refetchCleanPreview,
+  } = useQuery({
     queryKey: ['dataset-clean-preview', datasetId],
     queryFn: () => getCleanDataPreview(datasetId, 10),
     enabled: Boolean(datasetId) && hasCleanVersion,
@@ -333,7 +354,7 @@ export const DataStructureTab: React.FC = () => {
 
   if (isDatasetLoading) {
     return (
-      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+      <div className="p-12 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
         Memuat struktur dan ringkasan kualitas dataset...
       </div>
     );
@@ -342,7 +363,7 @@ export const DataStructureTab: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Kartu Ringkasan Kualitas Data (F-09 - Dipindahkan ke Tab 1 sesuai PRD Revisi 2) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {/* 1. Baris Mentah vs Bersih */}
         <div className="p-4 rounded-card bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark space-y-1.5">
           <div className="flex items-center justify-between text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">
@@ -351,19 +372,19 @@ export const DataStructureTab: React.FC = () => {
           </div>
           <div className="text-lg font-bold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
             {formatNumberId(dataset?.baris_mentah, 0)}{' '}
-            <span className="text-xs font-normal text-text-muted-light dark:text-text-muted-dark">
+            <span className="text-xs font-normal text-text-muted-light dark:text-text-secondary-dark">
               mentah
             </span>{' '}
             /{' '}
             {hasCleanVersion ? (
               <span>{formatNumberId(dataset?.baris_bersih, 0)}</span>
             ) : (
-              <span className="text-sm font-normal text-text-muted-light dark:text-text-muted-dark">
+              <span className="text-sm font-normal text-text-muted-light dark:text-text-secondary-dark">
                 -
               </span>
             )}
           </div>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             {hasCleanVersion
               ? `Versi aktif: v${dataset?.versi_bersih}`
               : 'Belum dijalankan pembersihan'}
@@ -381,7 +402,7 @@ export const DataStructureTab: React.FC = () => {
               ? formatPercentId(cleanReport.kelengkapan_persen)
               : '-'}
           </div>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             {hasCleanVersion
               ? 'Persentase sel terisi pada data bersih'
               : 'Tersedia setelah pembersihan'}
@@ -396,14 +417,14 @@ export const DataStructureTab: React.FC = () => {
           </div>
           <div className="text-lg font-bold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
             {dataset?.status === 'uploaded' ? (
-              <span className="text-sm font-medium text-text-muted-light dark:text-text-muted-dark italic">
+              <span className="text-sm font-medium text-text-muted-light dark:text-text-secondary-dark italic">
                 Belum diproses
               </span>
             ) : (
               formatNumberId(totalAnomaliesCount, 0)
             )}
           </div>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
             {dataset?.status === 'uploaded'
               ? 'Anomali dideteksi saat pembersihan'
               : `${formatNumberId(dataset?.anomali?.pending || 0, 0)} pending • ${formatNumberId(
@@ -422,7 +443,7 @@ export const DataStructureTab: React.FC = () => {
           <div className="text-lg font-bold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
             {formatNumberId(dataset?.jumlah_edit_manual || 0, 0)}
           </div>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             Total koreksi sel tercatat di audit log
           </p>
         </div>
@@ -439,12 +460,12 @@ export const DataStructureTab: React.FC = () => {
                 Tersedia
               </span>
             ) : (
-              <span className="text-sm font-medium text-text-muted-light dark:text-text-muted-dark">
+              <span className="text-sm font-medium text-text-muted-light dark:text-text-secondary-dark">
                 Belum Ada
               </span>
             )}
           </div>
-          <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+          <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
             {dataset?.ada_forecast
               ? 'Hasil model proyeksi tersimpan'
               : 'Dapat dijalankan pada Tab 4'}
@@ -495,8 +516,9 @@ export const DataStructureTab: React.FC = () => {
         >
           <button
             type="button"
+            aria-pressed={selectedVersion === 'raw'}
             onClick={() => setSelectedVersion('raw')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-button transition-colors min-h-[34px] ${
+            className={`px-3.5 py-1.5 text-sm font-semibold rounded-button transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
               selectedVersion === 'raw'
                 ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-sm'
                 : 'text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'
@@ -504,78 +526,98 @@ export const DataStructureTab: React.FC = () => {
           >
             Data Mentah (v0)
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (hasCleanVersion) {
-                setSelectedVersion('clean');
-              }
-            }}
-            disabled={!hasCleanVersion}
-            title={
-              hasCleanVersion
-                ? `Tampilkan Data Bersih v${dataset?.versi_bersih}`
-                : 'Dataset belum melalui proses pembersihan'
-            }
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-button transition-colors min-h-[34px] ${
-              selectedVersion === 'clean' && hasCleanVersion
-                ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-sm'
-                : 'text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark disabled:opacity-50 disabled:cursor-not-allowed'
-            }`}
-          >
-            {hasCleanVersion
-              ? `Data Bersih Terkini (v${dataset?.versi_bersih})`
-              : 'Data Bersih (Belum Tersedia)'}
-          </button>
+          <div className="relative group inline-flex">
+            <button
+              type="button"
+              aria-pressed={selectedVersion === 'clean' && hasCleanVersion}
+              aria-disabled={!hasCleanVersion}
+              aria-describedby={!hasCleanVersion ? 'clean-version-unavailable-tip' : undefined}
+              onClick={() => {
+                if (hasCleanVersion) {
+                  setSelectedVersion('clean');
+                }
+              }}
+              className={`px-3.5 py-1.5 text-sm font-semibold rounded-button transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
+                !hasCleanVersion
+                  ? 'opacity-55 cursor-not-allowed text-text-secondary-light dark:text-text-secondary-dark'
+                  : selectedVersion === 'clean'
+                  ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-sm'
+                  : 'text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'
+              }`}
+            >
+              {hasCleanVersion
+                ? `Data Bersih Terkini (v${dataset?.versi_bersih})`
+                : 'Data Bersih (Belum Tersedia)'}
+            </button>
+            {!hasCleanVersion && (
+              <div
+                id="clean-version-unavailable-tip"
+                role="tooltip"
+                className="pointer-events-none absolute right-0 bottom-full mb-2 z-30 w-64 px-3 py-2 rounded-popover text-xs font-medium shadow-lg bg-text-primary-light text-surface-light dark:bg-surface-dark dark:text-text-primary-dark dark:border dark:border-brand-primary-dark opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity"
+              >
+                Dataset belum melalui proses pembersihan otomatis di Tab 2.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Sub-Navigasi Bagian Tab 1 */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-light dark:border-border-dark">
+      <div
+        role="tablist"
+        aria-label="Bagian Tab Data dan Struktur"
+        className="flex flex-wrap items-center gap-2 border-b border-border-light dark:border-border-dark"
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'all'}
           onClick={() => setActiveSubTab('all')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control ${
-            activeSubTab === 'all' || activeSubTab === 'schema'
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
+            activeSubTab === 'all'
               ? 'border-brand-primary-light dark:border-brand-primary-dark text-brand-primary-light dark:text-brand-primary-dark'
               : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'
           }`}
         >
-          <Columns className="w-4 h-4" />
+          <Columns className="w-4 h-4" aria-hidden="true" />
           <span>Struktur Tabel & Skema Kolom</span>
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'preview'}
           onClick={() => setActiveSubTab('preview')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
             activeSubTab === 'preview'
               ? 'border-brand-primary-light dark:border-brand-primary-dark text-brand-primary-light dark:text-brand-primary-dark'
               : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'
           }`}
         >
-          <Table className="w-4 h-4" />
+          <Table className="w-4 h-4" aria-hidden="true" />
           <span>Pratinjau Tabel Data</span>
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'history'}
           onClick={() => setActiveSubTab('history')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
             activeSubTab === 'history'
               ? 'border-brand-primary-light dark:border-brand-primary-dark text-brand-primary-light dark:text-brand-primary-dark'
               : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark'
           }`}
         >
-          <History className="w-4 h-4" />
+          <History className="w-4 h-4" aria-hidden="true" />
           <span>
-            Linimasa Aktivitas (Audit Trail) ({formatNumberId(historyLogs.length, 0)})
+            Linimasa Aktivitas ({formatNumberId(historyLogs.length, 0)})
           </span>
         </button>
       </div>
 
-      {/* BAGIAN 1: Struktur Tabel & Skema Kolom (F-33) */}
-      {(activeSubTab === 'all' || activeSubTab === 'schema') && (
+      {/* BAGIAN 1: Struktur Tabel & Skema Kolom */}
+      {activeSubTab === 'all' && (
         <div className="rounded-accordion bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark overflow-hidden">
           {/* Header Accordion Skema */}
           <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-border-light dark:border-border-dark">
@@ -606,18 +648,18 @@ export const DataStructureTab: React.FC = () => {
             </button>
           </div>
 
-          {/* Tabel 6 Kolom Skema Struktur Dataset (F-33) */}
+          {/* Tabel 6 Kolom Skema Struktur Dataset */}
           {isAccordionOpen && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full text-left border-collapse" aria-label="Tabel Skema Struktur Kolom Dataset">
                 <thead>
-                  <tr className="bg-header-dark text-text-primary-dark text-xs font-bold uppercase tracking-wider sticky top-0">
-                    <th className="py-3.5 px-5">Kolom</th>
-                    <th className="py-3.5 px-4">Tipe</th>
-                    <th className="py-3.5 px-4">Sel Kosong</th>
-                    <th className="py-3.5 px-4">Nilai Unik</th>
-                    <th className="py-3.5 px-4">Contoh Nilai</th>
-                    <th className="py-3.5 px-5">Deskripsi</th>
+                  <tr className="bg-header-light dark:bg-header-dark text-text-secondary-light dark:text-text-primary-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider sticky top-0 z-10">
+                    <th scope="col" className="py-3.5 px-5">Kolom</th>
+                    <th scope="col" className="py-3.5 px-4">Tipe</th>
+                    <th scope="col" className="py-3.5 px-4">Sel Kosong</th>
+                    <th scope="col" className="py-3.5 px-4">Nilai Unik</th>
+                    <th scope="col" className="py-3.5 px-4">Contoh Nilai</th>
+                    <th scope="col" className="py-3.5 px-5">Deskripsi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light dark:divide-border-dark text-sm">
@@ -625,9 +667,31 @@ export const DataStructureTab: React.FC = () => {
                     <tr>
                       <td
                         colSpan={6}
-                        className="py-8 text-center text-sm text-text-muted-light dark:text-text-muted-dark"
+                        className="py-8 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark"
                       >
-                        Memuat skema kolom...
+                        {(selectedVersion === 'raw' && isRawPreviewError) ||
+                        (selectedVersion === 'clean' && isCleanPreviewError) ? (
+                          <div className="space-y-2">
+                            <p className="text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark font-medium">
+                              Gagal memuat skema kolom dataset dari server.
+                            </p>
+                            <Button
+                              variant="secondary"
+                              onClick={() =>
+                                selectedVersion === 'raw'
+                                  ? refetchRawPreview()
+                                  : refetchCleanPreview()
+                              }
+                            >
+                              Coba Lagi
+                            </Button>
+                          </div>
+                        ) : (selectedVersion === 'raw' && isRawPreviewLoading) ||
+                          (selectedVersion === 'clean' && isCleanPreviewLoading) ? (
+                          'Memuat skema kolom...'
+                        ) : (
+                          'Belum ada skema kolom yang dapat ditampilkan.'
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -645,14 +709,14 @@ export const DataStructureTab: React.FC = () => {
                         <td className="py-3.5 px-4">
                           <DataTypeBadge rawType={row.tipe} />
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-xs tabular-numbers">
+                        <td className="py-3.5 px-4 font-mono text-sm tabular-numbers">
                           {row.kosongText === '-' ? (
-                            <span className="text-text-muted-light dark:text-text-muted-dark">
+                            <span className="text-text-secondary-light dark:text-text-secondary-dark">
                               -
                             </span>
                           ) : (
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold ${
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                 row.hasMissing
                                   ? 'bg-anomaly-warning-bg-light dark:bg-anomaly-warning-bg-dark text-anomaly-warning-text-light dark:text-anomaly-warning-text-dark'
                                   : 'bg-anomaly-success-bg-light dark:bg-anomaly-success-bg-dark text-anomaly-success-text-light dark:text-anomaly-success-text-dark'
@@ -662,13 +726,16 @@ export const DataStructureTab: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-xs tabular-numbers text-text-secondary-light dark:text-text-secondary-dark">
+                        <td className="py-3.5 px-4 font-mono text-sm tabular-numbers text-text-secondary-light dark:text-text-secondary-dark">
                           {row.unikText}
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-xs text-text-secondary-light dark:text-text-secondary-dark max-w-xs truncate">
+                        <td
+                          className="py-3.5 px-4 font-mono text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-xs truncate"
+                          title={row.contohText}
+                        >
                           {row.contohText}
                         </td>
-                        <td className="py-3.5 px-5 text-xs text-text-muted-light dark:text-text-muted-dark">
+                        <td className="py-3.5 px-5 text-sm text-text-secondary-light dark:text-text-secondary-dark">
                           {row.deskripsiText}
                         </td>
                       </tr>
@@ -719,23 +786,40 @@ export const DataStructureTab: React.FC = () => {
           </div>
 
           {/* Tabel Pratinjau 10 Baris */}
-          {(selectedVersion === 'raw' && isRawPreviewLoading) ||
+          {(selectedVersion === 'raw' && isRawPreviewError) ||
+          (selectedVersion === 'clean' && isCleanPreviewError) ? (
+            <div className="p-10 text-center space-y-3">
+              <p className="text-sm font-medium text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark">
+                Gagal memuat pratinjau baris data dari server.
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  selectedVersion === 'raw'
+                    ? refetchRawPreview()
+                    : refetchCleanPreview()
+                }
+              >
+                Coba Lagi
+              </Button>
+            </div>
+          ) : (selectedVersion === 'raw' && isRawPreviewLoading) ||
           (selectedVersion === 'clean' && isCleanPreviewLoading) ? (
-            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
               Memuat baris pratinjau data...
             </div>
           ) : activePreviewRows.length === 0 ? (
-            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
+            <div className="p-10 text-center text-sm text-text-muted-light dark:text-text-secondary-dark">
               Tidak ada baris pratinjau untuk ditampilkan.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table className="w-full text-left border-collapse" aria-label="Tabel Pratinjau Baris Data">
                 <thead>
-                  <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0">
-                    <th className="py-3 px-4 w-12 text-center">#</th>
+                  <tr className="bg-header-light dark:bg-header-dark border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark sticky top-0 z-10">
+                    <th scope="col" className="py-3 px-4 w-12 text-center">#</th>
                     {previewColumnNames.map((col) => (
-                      <th key={col} className="py-3 px-4 whitespace-nowrap">
+                      <th key={col} scope="col" className="py-3 px-4 whitespace-nowrap">
                         {col}
                       </th>
                     ))}
@@ -747,7 +831,7 @@ export const DataStructureTab: React.FC = () => {
                       key={idx}
                       className="hover:bg-canvas-light dark:hover:bg-canvas-dark/50 transition-colors"
                     >
-                      <td className="py-2.5 px-4 text-center text-xs text-text-muted-light dark:text-text-muted-dark">
+                      <td className="py-2.5 px-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
                         {idx + 1}
                       </td>
                       {previewColumnNames.map((col) => (
@@ -755,7 +839,7 @@ export const DataStructureTab: React.FC = () => {
                           key={col}
                           className="py-2.5 px-4 text-text-primary-light dark:text-text-primary-dark whitespace-nowrap rounded-cell"
                         >
-                          {formatCellValueId(row[col])}
+                          {formatCellValueId(row[col], col)}
                         </td>
                       ))}
                     </tr>

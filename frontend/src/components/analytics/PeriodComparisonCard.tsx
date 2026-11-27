@@ -325,7 +325,7 @@ export const PeriodComparisonCard: React.FC<PeriodComparisonCardProps> = ({
   return (
     <>
       <ChartCardShell
-        title="Studio Komparasi Pertumbuhan Periode A vs Periode B (F-24)"
+        title="Studio Komparasi Pertumbuhan Periode A vs Periode B"
         subtitle={subtitle}
         chartTypeSlug="komparasi_periode"
         datasetName={datasetName}
@@ -358,13 +358,13 @@ export const PeriodComparisonCard: React.FC<PeriodComparisonCardProps> = ({
       <FullscreenChartModal
         isOpen={isFullscreenOpen}
         onClose={() => setIsFullscreenOpen(false)}
-        title="Studio Komparasi Pertumbuhan Periode A vs Periode B (F-24)"
+        title="Studio Komparasi Pertumbuhan Periode A vs Periode B"
         subtitle={subtitle}
         chartTypeSlug="komparasi_periode"
         datasetName={datasetName}
         truncationNote={truncationNote}
         narrativeText={comparePeriodeData?.deskripsi || null}
-        dataTable={renderDeltaTable(50)}
+        dataTable={isFullscreenOpen ? renderDeltaTable(50) : undefined}
       >
         {renderChart(440)}
       </FullscreenChartModal>

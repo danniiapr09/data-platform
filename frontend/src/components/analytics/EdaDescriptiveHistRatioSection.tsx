@@ -16,6 +16,7 @@ import {
   Calculator,
   HelpCircle,
 } from 'lucide-react';
+import { Button } from '@/components/common/Button';
 import { ChartCardShell } from './ChartCardShell';
 import { FullscreenChartModal } from './FullscreenChartModal';
 import {
@@ -26,7 +27,7 @@ import {
   EdaCategoricalColumnSummary,
   EdaNumericColumnSummary,
 } from '@/types/analytics';
-import { formatNumberId } from '@/utils/formatters';
+import { formatNumberId, formatRatioMultiplierId } from '@/utils/formatters';
 
 export interface EdaDescriptiveHistRatioSectionProps {
   datasetId: string;
@@ -164,6 +165,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
       primaryNumeric,
       secondaryNumeric,
       ratioGroupCol,
+      timeColumn,
       asPercent,
     ],
     queryFn: ({ signal }) =>
@@ -345,7 +347,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
   return (
     <div className="space-y-6">
       {/* Grid 3 Modul Analitik: 1) Statistik 5 Angka (F-21), 2) Histogram (F-22), 3) Kalkulator Rasio (F-25) */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
         {/* KARTU 1: Statistik Deskriptif 5 Angka & Profil Kategorikal (F-21) */}
         <section
           aria-label="Statistik Deskriptif 5 Angka dan Profil Kategorikal"
@@ -358,7 +360,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
               </div>
               <div>
                 <h3 className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">
-                  Statistik Deskriptif 5 Angka (F-21)
+                  Statistik Deskriptif 5 Angka
                 </h3>
                 <p className="text-xs font-mono text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
                   {primaryNumeric
@@ -389,25 +391,21 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                 <div className="h-6 rounded bg-header-light dark:bg-header-dark" />
               </div>
             ) : edaErrorMessage ? (
-              <div className="p-4 rounded-button bg-anomaly-danger-bg-light/50 dark:bg-anomaly-danger-bg-dark/40 text-xs text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark space-y-2">
+              <div className="p-4 rounded-button bg-anomaly-danger-bg-light/50 dark:bg-anomaly-danger-bg-dark/40 text-sm text-anomaly-danger-text-light dark:text-anomaly-danger-text-dark space-y-2.5">
                 <p>{edaErrorMessage}</p>
                 {onRetryEda && (
-                  <button
-                    type="button"
-                    onClick={onRetryEda}
-                    className="px-3 py-1.5 rounded-button bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-sm font-semibold min-h-control"
-                  >
+                  <Button variant="secondary" onClick={onRetryEda}>
                     Coba Lagi
-                  </button>
+                  </Button>
                 )}
               </div>
             ) : activeNumericSummary ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse" aria-label="Tabel Statistik Deskriptif 5 Angka">
                   <thead>
                     <tr className="border-b border-border-light dark:border-border-dark text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-                      <th className="py-2 pr-2">Parameter Statistik</th>
-                      <th className="py-2 pl-2 text-right font-mono">
+                      <th scope="col" className="py-2 pr-2">Parameter Statistik</th>
+                      <th scope="col" className="py-2 pl-2 text-right font-mono">
                         Nilai (N={formatNumberId(activeNumericSummary.jumlah, 0)})
                       </th>
                     </tr>
@@ -476,7 +474,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                           title="Rentang Interkuartil (IQR) = Q3 dikurangi Q1, dibulatkan hingga 2 angka desimal."
                         >
                           <span>Interquartile (IQR)</span>
-                          <HelpCircle className="w-3.5 h-3.5 text-text-muted-light dark:text-text-muted-dark" />
+                          <HelpCircle className="w-3.5 h-3.5 text-text-muted-light dark:text-text-secondary-dark" />
                         </span>
                       </td>
                       <td className="py-2 pl-2 text-right font-mono font-semibold tabular-numbers text-text-primary-light dark:text-text-primary-dark">
@@ -495,7 +493,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                 </table>
               </div>
             ) : (
-              <p className="text-xs text-text-muted-light dark:text-text-muted-dark">
+              <p className="text-xs text-text-muted-light dark:text-text-secondary-dark">
                 Centang minimal satu kolom angka [123] di panel kiri untuk
                 melihat ringkasan 5 angka.
               </p>
@@ -508,7 +506,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                   <span className="font-bold uppercase tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
                     Nilai Teratas: {primaryCategory}
                   </span>
-                  <span className="font-mono text-text-muted-light dark:text-text-muted-dark tabular-numbers">
+                  <span className="font-mono text-text-muted-light dark:text-text-secondary-dark tabular-numbers">
                     {formatNumberId(
                       categoricalSummaries[primaryCategory].unik,
                       0
@@ -536,9 +534,9 @@ export const EdaDescriptiveHistRatioSection: React.FC<
           </div>
         </section>
 
-        {/* KARTU 2: Distribusi Nilai / Histogram Bins (F-22) */}
+        {/* KARTU 2: Distribusi Nilai / Histogram Bins */}
         <ChartCardShell
-          title="Distribusi Histogram Nilai (F-22)"
+          title="Distribusi Histogram Nilai"
           subtitle={
             primaryNumeric
               ? `Sebaran frekuensi ${primaryNumeric} (${formatNumberId(
@@ -606,25 +604,25 @@ export const EdaDescriptiveHistRatioSection: React.FC<
             {activeNumericSummary && (
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-text-secondary-light dark:text-text-secondary-dark tabular-numbers px-1">
                 <span>
-                  Min: <strong>{formatNumberId(activeNumericSummary.min, 2)}</strong>
+                  Minimum: <strong>{formatNumberId(activeNumericSummary.min, 2)}</strong>
                 </span>
                 <span className="text-brand-primary-light dark:text-brand-primary-dark font-semibold">
-                  Mean: {formatNumberId(activeNumericSummary.rata_rata, 2)}
+                  Rata-rata: {formatNumberId(activeNumericSummary.rata_rata, 2)}
                 </span>
                 <span>
                   Median: <strong>{formatNumberId(activeNumericSummary.median, 2)}</strong>
                 </span>
                 <span>
-                  Max: <strong>{formatNumberId(activeNumericSummary.max, 2)}</strong>
+                  Maksimum: <strong>{formatNumberId(activeNumericSummary.max, 2)}</strong>
                 </span>
               </div>
             )}
           </div>
         </ChartCardShell>
 
-        {/* KARTU 3: Kalkulator Rasio Indikator (F-25) */}
+        {/* KARTU 3: Kalkulator Rasio Indikator */}
         <ChartCardShell
-          title="Kalkulator Rasio Indikator (F-25)"
+          title="Kalkulator Rasio Indikator"
           subtitle={
             primaryNumeric && secondaryNumeric && ratioGroupCol
               ? `Rasio ${primaryNumeric} / ${secondaryNumeric} per ${ratioGroupCol}`
@@ -659,10 +657,11 @@ export const EdaDescriptiveHistRatioSection: React.FC<
               >
                 <button
                   type="button"
+                  aria-pressed={!asPercent}
                   onClick={() => setAsPercent(false)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-button transition-colors min-h-[32px] ${
+                  className={`px-3 py-1.5 text-sm font-semibold rounded-button transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
                     !asPercent
-                      ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-xs'
+                      ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-sm'
                       : 'text-text-secondary-light dark:text-text-secondary-dark'
                   }`}
                 >
@@ -670,10 +669,11 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                 </button>
                 <button
                   type="button"
+                  aria-pressed={asPercent}
                   onClick={() => setAsPercent(true)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-button transition-colors min-h-[32px] ${
+                  className={`px-3 py-1.5 text-sm font-semibold rounded-button transition-colors min-h-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark ${
                     asPercent
-                      ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-xs'
+                      ? 'bg-surface-light dark:bg-surface-dark text-brand-primary-light dark:text-brand-primary-dark shadow-sm'
                       : 'text-text-secondary-light dark:text-text-secondary-dark'
                   }`}
                 >
@@ -685,7 +685,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                 aria-label="Batas jumlah kelompok rasio yang ditampilkan"
                 value={ratioTopLimit}
                 onChange={(e) => setRatioTopLimit(Number(e.target.value))}
-                className="px-2.5 py-1 text-xs font-mono rounded-input bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark min-h-control"
+                className="px-2.5 py-1.5 text-sm font-mono rounded-input bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-light dark:focus-visible:ring-brand-primary-dark min-h-control"
               >
                 <option value={10}>10 Teratas</option>
                 <option value={15}>15 Teratas</option>
@@ -694,7 +694,7 @@ export const EdaDescriptiveHistRatioSection: React.FC<
               </select>
             </div>
 
-            {/* Kotak Angka Rasio Keseluruhan & Rata-rata Rasio dari Backend */}
+            {/* Kotak Angka Rasio Keseluruhan & Rata-rata Rasio */}
             {ratioData && (
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="p-3 rounded-button bg-header-light/70 dark:bg-header-dark/70 border border-border-light dark:border-border-dark">
@@ -702,8 +702,9 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                     Rasio Keseluruhan
                   </span>
                   <span className="block text-xl font-bold font-mono tabular-numbers text-brand-primary-light dark:text-brand-primary-dark mt-0.5">
-                    {formatNumberId(ratioData.rasio_keseluruhan, 2)}
-                    {ratioData.satuan === '%' ? '%' : 'x'}
+                    {ratioData.satuan === '%'
+                      ? `${formatNumberId(ratioData.rasio_keseluruhan, 2)}%`
+                      : formatRatioMultiplierId(ratioData.rasio_keseluruhan)}
                   </span>
                 </div>
 
@@ -712,8 +713,9 @@ export const EdaDescriptiveHistRatioSection: React.FC<
                     Rata-rata per Kelompok
                   </span>
                   <span className="block text-xl font-bold font-mono tabular-numbers text-text-primary-light dark:text-text-primary-dark mt-0.5">
-                    {formatNumberId(ratioData.rata_rata_rasio, 2)}
-                    {ratioData.satuan === '%' ? '%' : 'x'}
+                    {ratioData.satuan === '%'
+                      ? `${formatNumberId(ratioData.rata_rata_rasio, 2)}%`
+                      : formatRatioMultiplierId(ratioData.rata_rata_rasio)}
                   </span>
                 </div>
               </div>
@@ -725,11 +727,11 @@ export const EdaDescriptiveHistRatioSection: React.FC<
         </ChartCardShell>
       </div>
 
-      {/* Modal Layar Penuh Histogram (F-22) */}
+      {/* Modal Layar Penuh Histogram */}
       <FullscreenChartModal
         isOpen={isHistFullscreen}
         onClose={() => setIsHistFullscreen(false)}
-        title="Distribusi Histogram Nilai (F-22)"
+        title="Distribusi Histogram Nilai"
         subtitle={`Sebaran frekuensi ${primaryNumeric || '-'} (${formatNumberId(
           debouncedBins,
           0
@@ -740,11 +742,11 @@ export const EdaDescriptiveHistRatioSection: React.FC<
         {renderHistogramChart(440)}
       </FullscreenChartModal>
 
-      {/* Modal Layar Penuh Kalkulator Rasio (F-25) */}
+      {/* Modal Layar Penuh Kalkulator Rasio */}
       <FullscreenChartModal
         isOpen={isRatioFullscreen}
         onClose={() => setIsRatioFullscreen(false)}
-        title="Kalkulator Rasio Indikator (F-25)"
+        title="Kalkulator Rasio Indikator"
         subtitle={`Rasio ${primaryNumeric || '-'} / ${
           secondaryNumeric || '-'
         } per ${ratioGroupCol || '-'}`}

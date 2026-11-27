@@ -1,5 +1,5 @@
 /**
- * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2, 3, & 4
+ * Saklar Terpusat Kemampuan Backend (Backend Capabilities Feature Flags) - Fase 2 s/d 6
  *
  * Seluruh saklar bernilai `false` secara default sampai endpoint atau perluasan payload
  * diimplementasikan dan diverifikasi bersama pengembang backend.
